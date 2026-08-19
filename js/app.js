@@ -1,7 +1,8 @@
 import { renderHome } from './home.js';
 import { renderStandings } from './standings.js';
+import { renderTeamSearch } from './team-search.js';
 
-const TITLES = { home: '表紙', standings: '順位表' };
+const TITLES = { home: '表紙', standings: '順位表', 'team-search': 'チーム検索' };
 
 async function navigate(route) {
   document.querySelectorAll('.nav-btn').forEach((b) => b.classList.toggle('active', b.dataset.route === route));
@@ -18,6 +19,10 @@ async function navigate(route) {
     const el = document.getElementById('view-standings');
     el.classList.add('active');
     await renderStandings(el);
+  } else if (route === 'team-search') {
+    const el = document.getElementById('view-team-search');
+    el.classList.add('active');
+    await renderTeamSearch(el);
   }
   location.hash = route;
 }
