@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>MLB Watch | 日本語でMLBをまるごと</title>
+<meta name="description" content="日本にいながらMLBの試合結果・順位表を日本時間でチェックできるPWA" />
+<meta name="theme-color" content="#0a1120" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icons/icon-192.png" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div class="stadium-glow"></div>
+<div class="app-shell">
+
+  <header class="app-header">
+    <p class="eyebrow">MLB WATCH</p>
+    <h1 id="header-title">表紙</h1>
+    <div class="jst-clock" id="jst-clock">--:--</div>
+    <div id="offline-indicator"></div>
+  </header>
+
+  <main>
+    <section id="view-home" class="view active"></section>
+    <section id="view-standings" class="view"></section>
+  </main>
+
+  <nav class="bottom-nav">
+    <button class="nav-btn active" data-route="home" aria-label="表紙">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg>
+      表紙
+    </button>
+    <button class="nav-btn" data-route="standings" aria-label="順位表">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20V10M12 20V4M20 20v-7"/></svg>
+      順位表
+    </button>
+  </nav>
+
+</div>
+
+<div id="sheet-root"></div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
