@@ -1,7 +1,9 @@
-import { getTeamScheduleByJstMonth, getStandings, toJstDateString, formatJstTime, currentSeasonYear } from './api.js';
+import { getTeamScheduleByJstMonth, getStandings, getTeamRoster, toJstDateString, formatJstTime, currentSeasonYear } from './api.js';
 import { teamName, teamShort, teamColor, DIVISIONS } from './teams.js';
 import { getFavorites, toggleFavorite } from './db.js';
 import { openGameSheet } from './game-sheet.js';
+import { openPlayerSheet, positionJa } from './player-sheet.js';
+import { closeSheet, pushSheetBack } from './sheet-stack.js';
 
 const WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
 
@@ -23,7 +25,7 @@ export async function openTeamSheet(teamId) {
     <div class="sheet-backdrop" id="sheet-backdrop">
       <div class="sheet">
         <div class="sheet-header">
-          <h2 style="color:${teamColor(teamId)}">${teamName(teamId)}</h2>
+          <h2><span class="team-dot" style="background:${teamColor(teamId)}"></span>${teamName(teamId)}</h2>
           <div class="sheet-header-actions">
             <button class="fav-toggle-btn ${isFav ? 'active' : ''}" id="sheet-fav-btn" aria-label="お気に入り登録・解除">${starIcon(isFav)}</button>
             <button class="sheet-close" id="sheet-close">×</button>
@@ -37,11 +39,19 @@ export async function openTeamSheet(teamId) {
           <button class="calendar-nav-btn" id="cal-next" aria-label="次の月">›</button>
         </div>
         <div id="team-sheet-body"><div class="spinner"></div></div>
+        <div class="calendar-legend">vs：主催試合（ホーム）　@：敵地試合（ビジター）　勝／敗：試合結果　※時刻はすべて日本時間</div>
+        <details class="collapsible" id="roster-collapsible" style="margin-top:18px;">
+          <summary>
+            <span class="section-title" style="margin:0;">選手一覧</span>
+            <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </summary>
+          <div id="roster-list" style="margin-top:10px;"><div class="spinner"></div></div>
+        </details>
       </div>
     </div>
   `;
 
-  const close = () => { root.innerHTML = ''; };
+  const close = () => closeSheet(root);
   document.getElementById('sheet-close').onclick = close;
   document.getElementById('sheet-backdrop').onclick = (e) => {
     if (e.target.id === 'sheet-backdrop') close();
@@ -65,8 +75,58 @@ export async function openTeamSheet(teamId) {
     loadCalendar(teamId, viewYear, viewMonth, todayJst);
   };
 
+  let rosterLoaded = false;
+  document.getElementById('roster-collapsible').addEventListener('toggle', function onToggle(e) {
+    if (e.target.open && !rosterLoaded) {
+      rosterLoaded = true;
+      loadRoster(teamId);
+    }
+  });
+
   loadStandingSummary(teamId);
   loadCalendar(teamId, viewYear, viewMonth, todayJst);
+}
+
+async function loadRoster(teamId) {
+  const target = document.getElementById('roster-list');
+  if (!target) return;
+  try {
+    const favorites = await getFavorites();
+    const favoritePlayerIds = new Set(favorites.filter((f) => f.type === 'player').map((f) => f.id));
+    const { roster } = await getTeamRoster(teamId);
+    const targetNow = document.getElementById('roster-list');
+    if (!targetNow) return; // シートが既に閉じられている場合
+    if (!roster.length) {
+      targetNow.innerHTML = `<div class="empty-state">選手一覧を取得できませんでした。</div>`;
+      return;
+    }
+    targetNow.innerHTML = `<div class="team-search-list">${roster.map((r) => renderRosterRow(r, favoritePlayerIds)).join('')}</div>`;
+    wireRosterTaps(targetNow, teamId);
+  } catch (e) {
+    const targetNow = document.getElementById('roster-list');
+    if (targetNow) targetNow.innerHTML = `<div class="empty-state">選手一覧を取得できませんでした。</div>`;
+  }
+}
+
+function renderRosterRow(entry, favoritePlayerIds) {
+  const person = entry.person;
+  const isFav = favoritePlayerIds.has(person.id);
+  return `
+    <button class="player-search-row" data-personid="${person.id}">
+      <span class="player-row-name">${person.fullName}</span>
+      <span class="player-row-meta">${positionJa(entry.position)}</span>
+      ${isFav ? '<span class="fav-star-mini">★</span>' : ''}
+    </button>
+  `;
+}
+
+function wireRosterTaps(container, teamId) {
+  container.querySelectorAll('[data-personid]').forEach((el) => {
+    el.onclick = () => {
+      pushSheetBack(() => openTeamSheet(teamId));
+      openPlayerSheet(Number(el.dataset.personid));
+    };
+  });
 }
 
 async function loadStandingSummary(teamId) {
@@ -119,7 +179,7 @@ async function loadCalendar(teamId, year, month, todayJst) {
     const target = document.getElementById('team-sheet-body');
     if (!target) return; // シートが既に閉じられている場合
     target.innerHTML = renderMonthGrid(year, month, byDate, teamId, todayJst);
-    wireCalendarTaps(target);
+    wireCalendarTaps(target, teamId);
   } catch (e) {
     const target = document.getElementById('team-sheet-body');
     if (target) target.innerHTML = `<div class="empty-state">試合カレンダーを取得できませんでした。</div>`;
@@ -176,7 +236,7 @@ function renderGameChip(game, teamId) {
   if (isFinal) {
     const selfScore = self.score ?? 0;
     const oppScore = opponent.score ?? 0;
-    label = selfScore > oppScore ? '○' : selfScore < oppScore ? '●' : '△';
+    label = selfScore > oppScore ? '勝' : selfScore < oppScore ? '敗' : '分';
     cls = selfScore > oppScore ? 'win' : selfScore < oppScore ? 'loss' : 'draw';
   } else if (started) {
     label = '試合中';
@@ -185,17 +245,21 @@ function renderGameChip(game, teamId) {
 
   return `
     <button class="calendar-game-chip ${cls}" data-gamepk="${game.gamePk}" title="${isHome ? 'vs' : '@'} ${teamName(opponent.team.id)}">
-      <span class="calendar-chip-dot" style="background:${teamColor(opponent.team.id)}"></span>
-      <span class="calendar-chip-opp">${isHome ? 'vs' : '@'}${teamShort(opponent.team.id)}</span>
+      <span class="calendar-chip-opp">
+        ${isHome ? 'vs' : '@'}
+        <span class="calendar-chip-dot" style="background:${teamColor(opponent.team.id)}"></span>
+        ${teamShort(opponent.team.id)}
+      </span>
       <span class="calendar-chip-result">${label}</span>
     </button>
   `;
 }
 
-function wireCalendarTaps(container) {
+function wireCalendarTaps(container, teamId) {
   container.querySelectorAll('.calendar-game-chip').forEach((chip) => {
     chip.onclick = (e) => {
       e.stopPropagation();
+      pushSheetBack(() => openTeamSheet(teamId));
       openGameSheet(Number(chip.dataset.gamepk));
     };
   });

@@ -1,6 +1,6 @@
 // アプリシェル（静的アセット）のキャッシュを担当。
 // 試合データ・順位表データのキャッシュは js/db.js の IndexedDB 側で行う。
-const CACHE_NAME = 'mlb-watch-shell-v7';
+const CACHE_NAME = 'mlb-watch-shell-v9';
 const SHELL_ASSETS = [
   './',
   './index.html',
@@ -18,7 +18,11 @@ const SHELL_ASSETS = [
   './js/team-search.js',
   './js/player-search.js',
   './js/player-sheet.js',
-  './js/my-players.js',
+  './js/game-sheet.js',
+  './js/today-stats.js',
+  './js/alerts.js',
+  './js/kana.js',
+  './js/sheet-stack.js',
   './js/teams.js',
   './icons/icon-192.png',
   './icons/icon-512.png',

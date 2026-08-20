@@ -2,6 +2,7 @@
 import { getPlayerDetail, currentSeasonYear } from './api.js';
 import { TEAMS } from './teams.js';
 import { getFavorites, toggleFavorite } from './db.js';
+import { closeSheet } from './sheet-stack.js';
 
 const POSITION_JA = {
   'Pitcher': '投手',
@@ -120,7 +121,7 @@ export async function openPlayerSheet(personId) {
     </div>
   `;
 
-  const close = () => { root.innerHTML = ''; };
+  const close = () => closeSheet(root);
   document.getElementById('sheet-close').onclick = close;
   document.getElementById('sheet-backdrop').onclick = (e) => {
     if (e.target.id === 'sheet-backdrop') close();

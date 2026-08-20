@@ -1,6 +1,7 @@
 // 試合詳細ボトムシート：スコアボード（ラインスコア）と打席ごとの結果
-import { getGameSummary, getGameLinescore, getGamePlayByPlay, formatJstTime, formatJstDateLabel } from './api.js';
+import { getGameSummary, getGameLinescore, getGamePlayByPlay, getGameBoxscore, formatJstTime, formatJstDateLabel } from './api.js';
 import { teamName, teamShort, teamColor } from './teams.js';
+import { closeSheet } from './sheet-stack.js';
 
 // MLB Stats APIの result.event（英語）を日本語の短いラベルに変換する。
 // 未登録のイベントは英語表記のままフォールバックする。
@@ -195,6 +196,13 @@ function statusLabel(game) {
   return '試合前';
 }
 
+// 試合会場名からGoogleマップの検索URLを組み立てる（所在地情報があれば精度向上のため含める）
+function googleMapsUrl(venue) {
+  const loc = venue.location || {};
+  const parts = [venue.name, loc.city, loc.state].filter(Boolean);
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(parts.join(', '))}`;
+}
+
 function renderHeader(game) {
   const away = game.teams.away;
   const home = game.teams.home;
@@ -209,6 +217,12 @@ function renderHeader(game) {
     <div class="game-sheet-header">
       <div class="status-pill ${isFinal ? 'final' : started ? 'live' : 'scheduled'}">${statusLabel(game)}</div>
       <div class="game-sheet-date">${formatJstDateLabel(game.gameDate)} ${formatJstTime(game.gameDate)}${!started ? ' 開始' : ''}</div>
+      ${game.venue && game.venue.name ? `
+        <a class="game-sheet-venue" href="${googleMapsUrl(game.venue)}" target="_blank" rel="noopener">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+          ${game.venue.name}
+        </a>
+      ` : ''}
       <div class="game-sheet-matchup">
         <div class="game-sheet-team">
           <span class="team-dot" style="background:${teamColor(away.team.id)}"></span>
@@ -294,10 +308,97 @@ function renderResultSummary(game, playByPlay) {
     <div class="game-result-summary">
       ${decisionParts.length ? `<div class="result-row">${decisionParts.join('　')}</div>` : ''}
       ${hrParts.length ? `<div class="result-row"><span class="result-tag hr">本塁打</span>${hrParts.join('、')}</div>` : ''}
-      <a class="pbp-jump-link" id="pbp-jump-link" href="#pbp-collapsible">打席ごとの結果を見る
+      <a class="pbp-jump-link" id="boxscore-jump-link" href="#boxscore-section">試合に出場した選手の結果を見る
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
       </a>
     </div>
+  `;
+}
+
+// その投手が実際に登板していたイニングの範囲（開始〜終了）をplayByPlayから求める
+function pitcherInningRange(allPlays, pitcherId) {
+  let min = null;
+  let max = null;
+  allPlays.forEach((play) => {
+    if (play.matchup && play.matchup.pitcher && play.matchup.pitcher.id === pitcherId) {
+      const inning = play.about.inning;
+      if (min === null || inning < min) min = inning;
+      if (max === null || inning > max) max = inning;
+    }
+  });
+  return { min, max };
+}
+
+// 打者1名分の行：安打数・打数・打点と、打席ごとの結果チップ
+function renderBoxBatterRow(person, stat, allPlays) {
+  const plays = allPlays.filter((p) => p.result && p.result.type === 'atBat' && p.matchup && p.matchup.batter && p.matchup.batter.id === person.id);
+  const chips = plays.map((p) => `<span class="pa-chip ${p.about.isScoringPlay ? 'scoring' : ''}">${translateEvent(p.result.event)}</span>`).join('');
+  return `
+    <div class="box-player-row">
+      <div class="box-player-name">${person.fullName}</div>
+      <div class="today-stat-line">${stat.hits ?? 0}安打 ${stat.atBats ?? 0}打数${stat.rbi ? ` ・ 打点${stat.rbi}` : ''}</div>
+      ${chips ? `<div class="pa-chip-row">${chips}</div>` : ''}
+    </div>
+  `;
+}
+
+// 投手1名分の行：登板イニングの範囲・球数・被安打・自責点・奪三振・与四死球
+function renderBoxPitcherRow(person, stat, allPlays) {
+  const range = pitcherInningRange(allPlays, person.id);
+  const inningLabel = range.min === null ? '' : range.min === range.max ? `${range.min}回` : `${range.min}回〜${range.max}回`;
+  const pitches = stat.numberOfPitches ?? stat.pitchesThrown ?? '-';
+  const walksAndHbp = (stat.baseOnBalls ?? 0) + (stat.hitBatsmen ?? 0);
+  return `
+    <div class="box-player-row">
+      <div class="box-player-name">${person.fullName}</div>
+      <div class="today-stat-line">${inningLabel}登板 ・ ${pitches}球</div>
+      <div class="standing-summary-stats">
+        <div><span class="stat-num">${stat.hits ?? 0}</span><span class="stat-label">被安打</span></div>
+        <div><span class="stat-num">${stat.earnedRuns ?? 0}</span><span class="stat-label">自責点</span></div>
+        <div><span class="stat-num">${stat.strikeOuts ?? 0}</span><span class="stat-label">奪三振</span></div>
+        <div><span class="stat-num">${walksAndHbp}</span><span class="stat-label">与四死球</span></div>
+      </div>
+    </div>
+  `;
+}
+
+function renderBoxTeamSection(teamSide, teamId, allPlays) {
+  if (!teamSide) return '';
+  const players = teamSide.players || {};
+
+  const battingRows = (teamSide.batters || [])
+    .map((id) => players[`ID${id}`])
+    .filter((p) => p && p.stats && p.stats.batting && p.stats.batting.plateAppearances > 0)
+    .map((p) => renderBoxBatterRow(p.person, p.stats.batting, allPlays))
+    .join('');
+
+  const pitchingRows = (teamSide.pitchers || [])
+    .map((id) => players[`ID${id}`])
+    .filter((p) => p && p.stats && p.stats.pitching && p.stats.pitching.inningsPitched && p.stats.pitching.inningsPitched !== '0.0')
+    .map((p) => renderBoxPitcherRow(p.person, p.stats.pitching, allPlays))
+    .join('');
+
+  return `
+    <div class="box-team-section">
+      <div class="box-team-header"><span class="team-dot" style="background:${teamColor(teamId)}"></span>${teamName(teamId)}</div>
+      ${battingRows ? `<div class="section-subtitle">打者</div>${battingRows}` : ''}
+      ${pitchingRows ? `<div class="section-subtitle">投手</div>${pitchingRows}` : ''}
+    </div>
+  `;
+}
+
+// 試合に出場した選手全員の成績（打者は打席結果、投手は登板イニング・球数・失点などの投球成績）
+function renderBoxscoreDetail(boxscore, playByPlay, game) {
+  if (!boxscore || !boxscore.teams) return '';
+  const allPlays = (playByPlay && playByPlay.allPlays) || [];
+  const awayId = game.teams.away.team.id;
+  const homeId = game.teams.home.team.id;
+
+  const body = renderBoxTeamSection(boxscore.teams.away, awayId, allPlays) + renderBoxTeamSection(boxscore.teams.home, homeId, allPlays);
+  if (!body.trim()) return '';
+
+  return `
+    <div id="boxscore-section" style="display:none; margin-top:18px;">${body}</div>
   `;
 }
 
@@ -370,7 +471,7 @@ export async function openGameSheet(gamePk) {
     </div>
   `;
 
-  const close = () => { root.innerHTML = ''; };
+  const close = () => closeSheet(root);
   document.getElementById('sheet-close').onclick = close;
   document.getElementById('sheet-backdrop').onclick = (e) => {
     if (e.target.id === 'sheet-backdrop') close();
@@ -403,9 +504,10 @@ export async function openGameSheet(gamePk) {
 
     body.innerHTML = html + `<div class="spinner"></div>`;
 
-    const [linescoreRes, playByPlayRes] = await Promise.all([
+    const [linescoreRes, playByPlayRes, boxscoreRes] = await Promise.all([
       getGameLinescore(gamePk),
       getGamePlayByPlay(gamePk),
+      getGameBoxscore(gamePk),
     ]);
 
     const bodyNow = document.getElementById('game-sheet-body');
@@ -413,17 +515,18 @@ export async function openGameSheet(gamePk) {
 
     html += renderLinescore(linescoreRes.data, game);
     html += renderResultSummary(game, playByPlayRes.data);
+    html += renderBoxscoreDetail(boxscoreRes.data, playByPlayRes.data, game);
     html += renderPlayByPlay(playByPlayRes.data, game);
     bodyNow.innerHTML = html;
 
-    const jumpLink = bodyNow.querySelector('#pbp-jump-link');
+    const jumpLink = bodyNow.querySelector('#boxscore-jump-link');
     if (jumpLink) {
       jumpLink.onclick = (e) => {
         e.preventDefault();
-        const details = bodyNow.querySelector('#pbp-collapsible');
-        if (details) {
-          details.open = true;
-          details.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const section = bodyNow.querySelector('#boxscore-section');
+        if (section) {
+          section.style.display = 'block';
+          section.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       };
     }

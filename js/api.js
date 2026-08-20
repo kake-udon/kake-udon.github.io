@@ -106,7 +106,7 @@ export async function getGamesForJstDate(jstDateStr) {
 }
 
 export async function getTeamSchedule(teamId, startDate, endDate) {
-  const url = `${BASE}/schedule?sportId=1&teamId=${teamId}&startDate=${startDate}&endDate=${endDate}&hydrate=team,linescore,decisions`;
+  const url = `${BASE}/schedule?sportId=1&teamId=${teamId}&startDate=${startDate}&endDate=${endDate}&hydrate=team,linescore,decisions,probablePitcher`;
   const cacheKey = `team-schedule:${teamId}:${startDate}:${endDate}`;
   const { data, fromCache, offline } = await cachedFetch(cacheKey, url);
   const games = [];
@@ -166,6 +166,16 @@ export function currentSeasonYear() {
   return Number(toJstDateString().slice(0, 4));
 }
 
+// --- チーム選手一覧 ---
+
+// チームの現在の在籍選手一覧（アクティブロースター）
+export async function getTeamRoster(teamId) {
+  const url = `${BASE}/teams/${teamId}/roster?rosterType=active`;
+  const cacheKey = `team-roster:${teamId}`;
+  const { data, fromCache, offline } = await cachedFetch(cacheKey, url);
+  return { roster: data.roster || [], fromCache, offline };
+}
+
 // --- 選手検索 ---
 
 // 現役選手全員の一覧を取得（名前・所属チーム・ポジションなどの基本プロフィール）
@@ -189,7 +199,7 @@ export async function getPlayerDetail(personId, season) {
 
 // 1試合分の概要（対戦カード・スコア・ステータス・予告先発）を取得
 export async function getGameSummary(gamePk) {
-  const url = `${BASE}/schedule?sportId=1&gamePk=${gamePk}&hydrate=team,linescore,decisions,probablePitcher`;
+  const url = `${BASE}/schedule?sportId=1&gamePk=${gamePk}&hydrate=team,linescore,decisions,probablePitcher,venue(location)`;
   const cacheKey = `game-summary:${gamePk}`;
   const { data, fromCache, offline } = await cachedFetch(cacheKey, url);
   let game = null;

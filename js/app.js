@@ -2,10 +2,10 @@ import { renderHome } from './home.js';
 import { renderStandings } from './standings.js';
 import { renderTeamSearch } from './team-search.js';
 import { renderPlayerSearch } from './player-search.js';
-import { renderMyPlayers } from './my-players.js';
+import { renderAlerts } from './alerts.js';
 import { renderRules } from './rules.js';
 
-const TITLES = { home: 'ホーム', standings: '順位表', 'team-search': 'チーム検索', 'player-search': '選手検索', 'my-players': 'マイ成績', rules: 'ルール解説' };
+const TITLES = { home: 'ホーム', standings: '順位表', 'team-search': 'チーム検索', 'player-search': '選手検索', alerts: 'お知らせ', rules: 'ルール解説' };
 
 async function navigate(route) {
   document.querySelectorAll('.nav-btn').forEach((b) => b.classList.toggle('active', b.dataset.route === route));
@@ -30,10 +30,10 @@ async function navigate(route) {
     const el = document.getElementById('view-player-search');
     el.classList.add('active');
     await renderPlayerSearch(el);
-  } else if (route === 'my-players') {
-    const el = document.getElementById('view-my-players');
+  } else if (route === 'alerts') {
+    const el = document.getElementById('view-alerts');
     el.classList.add('active');
-    await renderMyPlayers(el);
+    await renderAlerts(el);
   } else if (route === 'rules') {
     const el = document.getElementById('view-rules');
     el.classList.add('active');

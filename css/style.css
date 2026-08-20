@@ -704,6 +704,9 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
   font-family: 'Oswald', sans-serif;
   font-size: 18px;
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .sheet-close {
   background: var(--bg-panel-2);
@@ -776,8 +779,9 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
 
 .calendar-game-chip {
   display: flex;
-  align-items: center;
-  gap: 2px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
   width: 100%;
   background: var(--bg-panel-2);
   border: none;
@@ -789,25 +793,35 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
 }
 .calendar-game-chip .calendar-chip-dot {
   width: 6px; height: 6px; border-radius: 2px; flex-shrink: 0;
+  display: inline-block;
 }
 .calendar-chip-opp {
+  display: flex;
+  align-items: center;
+  gap: 3px;
   font-size: 9px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  flex: 1;
+  max-width: 100%;
   text-align: left;
 }
 .calendar-chip-result {
   font-family: 'Roboto Mono', monospace;
   font-size: 9px;
-  flex-shrink: 0;
+  font-weight: 700;
 }
 .calendar-game-chip.win .calendar-chip-result { color: var(--win); }
 .calendar-game-chip.loss .calendar-chip-result { color: var(--loss); }
 .calendar-game-chip.draw .calendar-chip-result { color: var(--chalk-dim); }
 .calendar-game-chip.live .calendar-chip-result { color: var(--loss); }
 .calendar-game-chip.scheduled .calendar-chip-result { color: var(--amber-soft); }
+
+.calendar-legend {
+  font-size: 11px;
+  color: var(--chalk-dim);
+  margin-top: 8px;
+}
 
 /* ---- 試合詳細シート：スコアボード・打席結果 ---- */
 .game-sheet-header {
@@ -820,8 +834,18 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
   font-family: 'Roboto Mono', monospace;
   font-size: 12px;
   color: var(--chalk-dim);
-  margin: 8px 0 10px;
+  margin: 8px 0 2px;
 }
+.game-sheet-venue {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--chalk-dim);
+  text-decoration: none;
+  margin-bottom: 10px;
+}
+.game-sheet-venue:active { color: var(--amber-soft); }
 .game-sheet-matchup {
   display: flex;
   flex-direction: column;
@@ -908,6 +932,34 @@ table.linescore-table tr:last-child td { border-bottom: none; }
   color: var(--amber-soft);
   text-decoration: none;
 }
+
+.box-team-section + .box-team-section { margin-top: 18px; }
+.box-team-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Oswald', sans-serif;
+  font-size: 14px;
+  letter-spacing: 0.03em;
+  font-weight: 600;
+  color: var(--chalk);
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--line);
+}
+.section-subtitle {
+  font-size: 11px;
+  color: var(--chalk-dim);
+  margin-top: 10px;
+  margin-bottom: 6px;
+}
+.box-player-row {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+}
+.box-player-row + .box-player-row { margin-top: 8px; }
+.box-player-name { font-size: 14px; font-weight: 500; }
 
 .pbp-list {
   display: flex;
