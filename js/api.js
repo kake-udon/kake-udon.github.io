@@ -212,3 +212,10 @@ export async function getGamePlayByPlay(gamePk) {
   const cacheKey = `playbyplay:${gamePk}`;
   return cachedFetch(cacheKey, url);
 }
+
+// 選手ごとの当該試合の成績（打撃・投球）を含むボックススコア
+export async function getGameBoxscore(gamePk) {
+  const url = `${BASE}/game/${gamePk}/boxscore`;
+  const cacheKey = `boxscore:${gamePk}`;
+  return cachedFetch(cacheKey, url);
+}

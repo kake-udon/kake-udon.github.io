@@ -5,7 +5,7 @@ import { renderPlayerSearch } from './player-search.js';
 import { renderMyPlayers } from './my-players.js';
 import { renderRules } from './rules.js';
 
-const TITLES = { home: '表紙', standings: '順位表', 'team-search': 'チーム検索', 'player-search': '選手検索', 'my-players': 'マイ成績', rules: 'ルール解説' };
+const TITLES = { home: 'ホーム', standings: '順位表', 'team-search': 'チーム検索', 'player-search': '選手検索', 'my-players': 'マイ成績', rules: 'ルール解説' };
 
 async function navigate(route) {
   document.querySelectorAll('.nav-btn').forEach((b) => b.classList.toggle('active', b.dataset.route === route));

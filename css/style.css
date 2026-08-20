@@ -430,7 +430,13 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
   cursor: pointer;
 }
 .team-search-row:active { background: rgba(255, 255, 255, 0.03); }
-.team-row-name { flex: 1; }
+.team-row-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .team-row-short {
   font-family: 'Roboto Mono', monospace;
   font-size: 11px;
@@ -867,6 +873,42 @@ table.linescore-table tr:last-child td { border-bottom: none; }
   font-weight: 700;
 }
 
+.game-result-summary {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}
+.result-row {
+  font-size: 13px;
+  line-height: 1.7;
+}
+.result-row + .result-row { margin-top: 2px; }
+.result-tag {
+  display: inline-block;
+  font-family: 'Oswald', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-right: 6px;
+  color: var(--bg-night);
+}
+.result-tag.win { background: var(--win); }
+.result-tag.loss { background: var(--loss); }
+.result-tag.save { background: var(--amber); }
+.result-tag.hr { background: var(--amber-soft); }
+.pbp-jump-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--amber-soft);
+  text-decoration: none;
+}
+
 .pbp-list {
   display: flex;
   flex-direction: column;
@@ -888,6 +930,17 @@ table.linescore-table tr:last-child td { border-bottom: none; }
   padding: 10px 12px;
 }
 .pbp-play.scoring { border-color: var(--amber-dim); }
+.pbp-play-state {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.pbp-bases { flex-shrink: 0; }
+.pbp-count {
+  font-size: 11px;
+  color: var(--chalk-dim);
+}
 .pbp-play-top {
   display: flex;
   justify-content: space-between;
@@ -911,6 +964,32 @@ table.linescore-table tr:last-child td { border-bottom: none; }
   font-size: 11px;
   color: var(--chalk-dim);
   margin-top: 4px;
+}
+
+.today-stat-line {
+  font-family: 'Oswald', sans-serif;
+  font-size: 13px;
+  color: var(--amber-soft);
+  margin-top: 2px;
+}
+.pa-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.pa-chip {
+  font-family: 'Oswald', sans-serif;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--bg-panel-2);
+  border: 1px solid var(--line);
+  color: var(--chalk-dim);
+}
+.pa-chip.scoring {
+  color: var(--amber-soft);
+  border-color: var(--amber-dim);
 }
 
 .spinner {

@@ -15,42 +15,44 @@ export const DIVISIONS = {
   205: 'ナ・リーグ中地区',
 };
 
+// name は「地名・チーム名」表記に統一（例：シカゴ・ホワイトソックス、シカゴ・カブス）。
+// アスレチックスのみ、本拠地移転に伴い正式名称に地名が含まれないためチーム名単独表記。
 export const TEAMS = {
-  110: { name: 'オリオールズ', short: 'BAL', league: 103, division: 201, color: '#DF4601' },
-  111: { name: 'レッドソックス', short: 'BOS', league: 103, division: 201, color: '#BD3039' },
-  147: { name: 'ヤンキース', short: 'NYY', league: 103, division: 201, color: '#0C2340' },
-  139: { name: 'レイズ', short: 'TB', league: 103, division: 201, color: '#092C5C' },
-  141: { name: 'ブルージェイズ', short: 'TOR', league: 103, division: 201, color: '#134A8E' },
+  110: { name: 'ボルチモア・オリオールズ', short: 'BAL', league: 103, division: 201, color: '#DF4601' },
+  111: { name: 'ボストン・レッドソックス', short: 'BOS', league: 103, division: 201, color: '#BD3039' },
+  147: { name: 'ニューヨーク・ヤンキース', short: 'NYY', league: 103, division: 201, color: '#0C2340' },
+  139: { name: 'タンパベイ・レイズ', short: 'TB', league: 103, division: 201, color: '#092C5C' },
+  141: { name: 'トロント・ブルージェイズ', short: 'TOR', league: 103, division: 201, color: '#134A8E' },
 
-  145: { name: 'ホワイトソックス', short: 'CWS', league: 103, division: 202, color: '#27251F' },
-  114: { name: 'ガーディアンズ', short: 'CLE', league: 103, division: 202, color: '#E31937' },
-  116: { name: 'タイガース', short: 'DET', league: 103, division: 202, color: '#0C2340' },
-  118: { name: 'ロイヤルズ', short: 'KC', league: 103, division: 202, color: '#004687' },
-  142: { name: 'ツインズ', short: 'MIN', league: 103, division: 202, color: '#002B5C' },
+  145: { name: 'シカゴ・ホワイトソックス', short: 'CWS', league: 103, division: 202, color: '#27251F' },
+  114: { name: 'クリーブランド・ガーディアンズ', short: 'CLE', league: 103, division: 202, color: '#E31937' },
+  116: { name: 'デトロイト・タイガース', short: 'DET', league: 103, division: 202, color: '#0C2340' },
+  118: { name: 'カンザスシティ・ロイヤルズ', short: 'KC', league: 103, division: 202, color: '#004687' },
+  142: { name: 'ミネソタ・ツインズ', short: 'MIN', league: 103, division: 202, color: '#002B5C' },
 
-  117: { name: 'アストロズ', short: 'HOU', league: 103, division: 200, color: '#EB6E1F' },
-  108: { name: 'エンゼルス', short: 'LAA', league: 103, division: 200, color: '#BA0021' },
+  117: { name: 'ヒューストン・アストロズ', short: 'HOU', league: 103, division: 200, color: '#EB6E1F' },
+  108: { name: 'ロサンゼルス・エンゼルス', short: 'LAA', league: 103, division: 200, color: '#BA0021' },
   133: { name: 'アスレチックス', short: 'ATH', league: 103, division: 200, color: '#003831' },
-  136: { name: 'マリナーズ', short: 'SEA', league: 103, division: 200, color: '#0C2C56' },
-  140: { name: 'レンジャーズ', short: 'TEX', league: 103, division: 200, color: '#C0111F' },
+  136: { name: 'シアトル・マリナーズ', short: 'SEA', league: 103, division: 200, color: '#0C2C56' },
+  140: { name: 'テキサス・レンジャーズ', short: 'TEX', league: 103, division: 200, color: '#C0111F' },
 
-  144: { name: 'ブレーブス', short: 'ATL', league: 104, division: 204, color: '#CE1141' },
-  146: { name: 'マーリンズ', short: 'MIA', league: 104, division: 204, color: '#00A3E0' },
-  121: { name: 'メッツ', short: 'NYM', league: 104, division: 204, color: '#FF5910' },
-  143: { name: 'フィリーズ', short: 'PHI', league: 104, division: 204, color: '#E81828' },
-  120: { name: 'ナショナルズ', short: 'WSH', league: 104, division: 204, color: '#AB0003' },
+  144: { name: 'アトランタ・ブレーブス', short: 'ATL', league: 104, division: 204, color: '#CE1141' },
+  146: { name: 'マイアミ・マーリンズ', short: 'MIA', league: 104, division: 204, color: '#00A3E0' },
+  121: { name: 'ニューヨーク・メッツ', short: 'NYM', league: 104, division: 204, color: '#FF5910' },
+  143: { name: 'フィラデルフィア・フィリーズ', short: 'PHI', league: 104, division: 204, color: '#E81828' },
+  120: { name: 'ワシントン・ナショナルズ', short: 'WSH', league: 104, division: 204, color: '#AB0003' },
 
-  112: { name: 'カブス', short: 'CHC', league: 104, division: 205, color: '#0E3386' },
-  113: { name: 'レッズ', short: 'CIN', league: 104, division: 205, color: '#C6011F' },
-  158: { name: 'ブリュワーズ', short: 'MIL', league: 104, division: 205, color: '#12284B' },
-  134: { name: 'パイレーツ', short: 'PIT', league: 104, division: 205, color: '#FDB827' },
-  138: { name: 'カージナルス', short: 'STL', league: 104, division: 205, color: '#C41E3A' },
+  112: { name: 'シカゴ・カブス', short: 'CHC', league: 104, division: 205, color: '#0E3386' },
+  113: { name: 'シンシナティ・レッズ', short: 'CIN', league: 104, division: 205, color: '#C6011F' },
+  158: { name: 'ミルウォーキー・ブリュワーズ', short: 'MIL', league: 104, division: 205, color: '#12284B' },
+  134: { name: 'ピッツバーグ・パイレーツ', short: 'PIT', league: 104, division: 205, color: '#FDB827' },
+  138: { name: 'セントルイス・カージナルス', short: 'STL', league: 104, division: 205, color: '#C41E3A' },
 
-  109: { name: 'ダイヤモンドバックス', short: 'AZ', league: 104, division: 203, color: '#A71930' },
-  115: { name: 'ロッキーズ', short: 'COL', league: 104, division: 203, color: '#333366' },
-  119: { name: 'ドジャース', short: 'LAD', league: 104, division: 203, color: '#005A9C' },
-  135: { name: 'パドレス', short: 'SD', league: 104, division: 203, color: '#2F241D' },
-  137: { name: 'ジャイアンツ', short: 'SF', league: 104, division: 203, color: '#FD5A1E' },
+  109: { name: 'アリゾナ・ダイヤモンドバックス', short: 'AZ', league: 104, division: 203, color: '#A71930' },
+  115: { name: 'コロラド・ロッキーズ', short: 'COL', league: 104, division: 203, color: '#333366' },
+  119: { name: 'ロサンゼルス・ドジャース', short: 'LAD', league: 104, division: 203, color: '#005A9C' },
+  135: { name: 'サンディエゴ・パドレス', short: 'SD', league: 104, division: 203, color: '#2F241D' },
+  137: { name: 'サンフランシスコ・ジャイアンツ', short: 'SF', league: 104, division: 203, color: '#FD5A1E' },
 };
 
 export function teamName(id) {

@@ -4,6 +4,7 @@ import { getFavorites, toggleFavorite } from './db.js';
 import { openGameSheet } from './game-sheet.js';
 import { pickTrivia } from './trivia.js';
 import { isSupported, getPermissionState, getSubscription, enableNotifications, disableNotifications, syncFavoriteTeams } from './notifications.js';
+import { renderTodayStats } from './today-stats.js';
 
 let favoriteTeamIds = new Set();
 let currentTrivia = null;
@@ -65,11 +66,22 @@ function renderGameCard(game) {
   `;
 }
 
+// お気に入りチームが関わる試合を先頭に集める（それぞれのグループ内の順序は元のまま維持）
+function sortGamesByFavorite(games) {
+  const favGames = [];
+  const otherGames = [];
+  games.forEach((g) => {
+    const isFav = favoriteTeamIds.has(g.teams.away.team.id) || favoriteTeamIds.has(g.teams.home.team.id);
+    (isFav ? favGames : otherGames).push(g);
+  });
+  return [...favGames, ...otherGames];
+}
+
 function renderGameList(games) {
   if (!games.length) {
     return `<div class="empty-state">この日は試合がありません。</div>`;
   }
-  return `<div class="scoreboard-list">${games.map(renderGameCard).join('')}</div>`;
+  return `<div class="scoreboard-list">${sortGamesByFavorite(games).map(renderGameCard).join('')}</div>`;
 }
 
 function renderTeamPicker() {
@@ -105,6 +117,7 @@ export async function renderHome(container) {
     <div id="notification-section"><div class="spinner"></div></div>
     <div class="section-title">本日の試合 <span class="count" id="today-count"></span></div>
     <div id="today-games"><div class="spinner"></div></div>
+    <div id="today-stats-section" style="margin-top:22px;"></div>
     <details class="collapsible" style="margin-top:22px;">
       <summary>
         <span class="section-title" style="margin:0;">前日の結果</span>
@@ -124,6 +137,7 @@ export async function renderHome(container) {
   wireGameCardTaps(container);
   wireTriviaRefresh(container);
   renderNotificationSection(container);
+  renderTodayStats(container.querySelector('#today-stats-section'));
 
   const todayJst = toJstDateString();
   const yesterdayJst = addDaysToDateString(todayJst, -1);
@@ -153,7 +167,7 @@ function setOfflineBadge(offline) {
 }
 
 function wireGameCardTaps(container) {
-  container.querySelectorAll('.game-card').forEach((btn) => {
+  container.querySelectorAll('.game-card[data-gamepk]').forEach((btn) => {
     btn.onclick = () => {
       openGameSheet(Number(btn.dataset.gamepk));
     };
