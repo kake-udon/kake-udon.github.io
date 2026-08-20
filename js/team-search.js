@@ -1,4 +1,4 @@
-// チーム検索画面：検索ボックス・簡易US地図プロット・地区別リスト
+// チーム検索画面：簡易US地図プロット・地区別リスト
 // 地図は著作権のかからない自前の簡略化ポリゴンで、各球団本拠地のおおよその緯度経度から算出した座標にドットを配置する。
 import { TEAMS, DIVISIONS, teamColor } from './teams.js';
 import { openTeamSheet } from './team-sheet.js';
@@ -46,31 +46,18 @@ const TEAM_POSITIONS = {
 const DIVISION_ORDER = [201, 202, 200, 204, 205, 203]; // 東・中・西の順で表示
 
 let favoriteTeamIds = new Set();
-let query = '';
 
 async function loadFavorites() {
   const favs = await getFavorites();
   favoriteTeamIds = new Set(favs.filter((f) => f.type === 'team').map((f) => f.id));
 }
 
-function matchesQuery(t) {
-  if (!query.trim()) return true;
-  const q = query.trim().toLowerCase();
-  return t.name.toLowerCase().includes(q) || t.short.toLowerCase().includes(q);
-}
-
 function renderMap() {
   const dots = Object.entries(TEAMS).map(([id, t]) => {
     const pos = TEAM_POSITIONS[id];
     if (!pos) return '';
-    const match = matchesQuery(t);
     const isFav = favoriteTeamIds.has(Number(id));
-    const cls = [
-      'team-dot-map',
-      query.trim() && !match ? 'dimmed' : '',
-      query.trim() && match ? 'highlighted' : '',
-      isFav ? 'is-favorite' : '',
-    ].filter(Boolean).join(' ');
+    const cls = ['team-dot-map', isFav ? 'is-favorite' : ''].filter(Boolean).join(' ');
     return `
       <g class="${cls}" data-teamid="${id}" tabindex="0" role="button" aria-label="${t.name}">
         <circle cx="${pos[0]}" cy="${pos[1]}" r="16" fill="transparent" />
@@ -102,9 +89,8 @@ function renderTeamRow(id, t) {
 }
 
 function renderGroupedList() {
-  const groups = DIVISION_ORDER.map((divId) => {
-    const teamsInDiv = Object.entries(TEAMS).filter(([, t]) => t.division === divId && matchesQuery(t));
-    if (!teamsInDiv.length) return '';
+  return DIVISION_ORDER.map((divId) => {
+    const teamsInDiv = Object.entries(TEAMS).filter(([, t]) => t.division === divId);
     return `
       <div class="division-block">
         <div class="division-header">${DIVISIONS[divId]}</div>
@@ -112,9 +98,6 @@ function renderGroupedList() {
       </div>
     `;
   }).join('');
-
-  const hasAny = Object.values(TEAMS).some((t) => matchesQuery(t));
-  return hasAny ? groups : `<div class="empty-state">該当するチームが見つかりませんでした。</div>`;
 }
 
 function wireTapTargets(container) {
@@ -130,32 +113,14 @@ function wireTapTargets(container) {
   });
 }
 
-function refresh(container) {
-  const mapWrap = container.querySelector('.team-map-wrap');
-  if (mapWrap) mapWrap.outerHTML = renderMap();
-  const listWrap = container.querySelector('#team-search-list-wrap');
-  if (listWrap) listWrap.innerHTML = renderGroupedList();
-  wireTapTargets(container);
-}
-
 export async function renderTeamSearch(container) {
   await loadFavorites();
-  query = '';
 
   container.innerHTML = `
-    <div class="search-input-wrap">
-      <input type="search" id="team-search-input" class="search-input" placeholder="チーム名・略称で検索（例：ドジャース、LAD）" />
-    </div>
     <div class="section-title">球団マップ<span class="count">全30球団</span></div>
     ${renderMap()}
     <div id="team-search-list-wrap">${renderGroupedList()}</div>
   `;
-
-  const input = container.querySelector('#team-search-input');
-  input.oninput = () => {
-    query = input.value;
-    refresh(container);
-  };
 
   wireTapTargets(container);
 }
