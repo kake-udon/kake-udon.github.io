@@ -575,6 +575,33 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
 .toggle-switch.on .toggle-knob { transform: translateX(20px); background: var(--bg-night); }
 .toggle-switch:disabled { opacity: 0.6; cursor: default; }
 
+/* ---- ルール解説 ---- */
+.rule-section { margin-bottom: 14px; }
+.rule-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+.rule-item {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+.rule-term {
+  font-family: 'Oswald', sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: var(--amber-soft);
+  margin-bottom: 6px;
+}
+.rule-text {
+  font-size: 13px;
+  color: var(--chalk-dim);
+  line-height: 1.6;
+}
+
 /* ---- 豆知識ブロック ---- */
 .trivia-card {
   background: var(--bg-panel);

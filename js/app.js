@@ -3,8 +3,9 @@ import { renderStandings } from './standings.js';
 import { renderTeamSearch } from './team-search.js';
 import { renderPlayerSearch } from './player-search.js';
 import { renderMyPlayers } from './my-players.js';
+import { renderRules } from './rules.js';
 
-const TITLES = { home: '表紙', standings: '順位表', 'team-search': 'チーム検索', 'player-search': '選手検索', 'my-players': 'マイ成績' };
+const TITLES = { home: '表紙', standings: '順位表', 'team-search': 'チーム検索', 'player-search': '選手検索', 'my-players': 'マイ成績', rules: 'ルール解説' };
 
 async function navigate(route) {
   document.querySelectorAll('.nav-btn').forEach((b) => b.classList.toggle('active', b.dataset.route === route));
@@ -33,6 +34,10 @@ async function navigate(route) {
     const el = document.getElementById('view-my-players');
     el.classList.add('active');
     await renderMyPlayers(el);
+  } else if (route === 'rules') {
+    const el = document.getElementById('view-rules');
+    el.classList.add('active');
+    await renderRules(el);
   }
   location.hash = route;
 }

@@ -40,6 +40,7 @@ js/
   player-sheet.js … 選手詳細ボトムシート（プロフィール・当該シーズン成績）
   my-players.js   … マイ成績画面（お気に入り選手の成績まとめ）
   trivia.js       … 豆知識コンテンツ集（ルール・記録/歴史・用語）とランダム抽出
+  rules.js        … MLBルール解説画面（カテゴリ別の折りたたみ静的コンテンツ）
   notifications.js … Web Push購読・解除・お気に入りチームIDのSupabase同期
 icons/            … オリジナル生成アイコン（商標不使用）
 supabase/schema.sql … Push購読テーブルのDDL（Supabase SQL Editorで実行）
@@ -56,9 +57,10 @@ scripts/send-notifications.mjs … 毎日18時JSTのPushダイジェスト送信
 - **マイ成績**（ロードマップ4）：お気に入り選手の当該シーズン成績をまとめて一覧表示
 - **豆知識コンテンツの拡充**（ロードマップ5）：ルール・記録/歴史・用語のカテゴリで20件に拡充（`js/trivia.js`）、表紙画面に更新ボタンを追加し直前と異なる豆知識をランダム表示
 - **Web Push通知**（ロードマップ6）：表紙画面に通知トグルを追加、毎日18時（JST）にお気に入りチームの当日結果と次戦予定をダイジェスト通知。バックエンドはGitHub Actions（`.github/workflows/notify.yml`）+ Supabase（無料枠）。Supabaseプロジェクト作成・GitHub Secrets設定・Android実機でのPush受信まで確認済み（2026-08-20）。
+- **MLBルール解説**（ロードマップ7）：基本ルール・投球・打撃走塁・ポジション/守備・シーズン構成・用語集の6カテゴリ、計20項目を折りたたみ形式で表示（`js/rules.js`）。API通信なしの静的コンテンツ。
 
 ## 未実装（次のロードマップ）
-1. MLBルール解説
+現時点でロードマップに残っている項目はありません。
 
 ## デプロイ
 GitHub Pages（`main`ブランチ / `/ (root)`）。手順の詳細は`README.md`を参照。
