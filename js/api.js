@@ -119,6 +119,26 @@ export async function getTeamSchedule(teamId, startDate, endDate) {
   return { games, fromCache, offline };
 }
 
+// 指定した年月（JST基準）のチーム試合を、JST日付ごとにまとめて返す（カレンダー表示用）
+// MLBの試合はアメリカの日付でグルーピングされているため、月の前後1日分もまとめて取得してから
+// 実際のUTC開始時刻でJST日付に振り分ける（getGamesForJstDateと同じ考え方）。
+export async function getTeamScheduleByJstMonth(teamId, year, month) {
+  const first = `${year}-${String(month).padStart(2, '0')}-01`;
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const last = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+  const usStart = addDaysToDateString(first, -1);
+  const usEnd = addDaysToDateString(last, 1);
+  const { games, fromCache, offline } = await getTeamSchedule(teamId, usStart, usEnd);
+
+  const byDate = {};
+  for (const game of games) {
+    const jstDate = toJstDateString(new Date(game.gameDate));
+    if (jstDate < first || jstDate > last) continue;
+    (byDate[jstDate] ||= []).push(game);
+  }
+  return { byDate, fromCache, offline };
+}
+
 // --- 順位表取得 ---
 
 export async function getStandings(season) {
@@ -163,4 +183,32 @@ export async function getPlayerDetail(personId, season) {
   const { data, fromCache, offline } = await cachedFetch(cacheKey, url);
   const person = (data.people || [])[0] || null;
   return { person, fromCache, offline };
+}
+
+// --- 試合詳細（スコアボード・打席結果） ---
+
+// 1試合分の概要（対戦カード・スコア・ステータス・予告先発）を取得
+export async function getGameSummary(gamePk) {
+  const url = `${BASE}/schedule?sportId=1&gamePk=${gamePk}&hydrate=team,linescore,decisions,probablePitcher`;
+  const cacheKey = `game-summary:${gamePk}`;
+  const { data, fromCache, offline } = await cachedFetch(cacheKey, url);
+  let game = null;
+  for (const dateBlock of data.dates || []) {
+    if (dateBlock.games && dateBlock.games.length) { game = dateBlock.games[0]; break; }
+  }
+  return { game, fromCache, offline };
+}
+
+// イニングごとの得点・安打・失策（ラインスコア）
+export async function getGameLinescore(gamePk) {
+  const url = `${BASE}/game/${gamePk}/linescore`;
+  const cacheKey = `linescore:${gamePk}`;
+  return cachedFetch(cacheKey, url);
+}
+
+// 打席（プレー）ごとの結果一覧
+export async function getGamePlayByPlay(gamePk) {
+  const url = `${BASE}/game/${gamePk}/playByPlay`;
+  const cacheKey = `playbyplay:${gamePk}`;
+  return cachedFetch(cacheKey, url);
 }

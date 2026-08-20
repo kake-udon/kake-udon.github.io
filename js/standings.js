@@ -6,8 +6,8 @@ let activeLeague = 103; // 103 = ア・リーグ, 104 = ナ・リーグ
 let cachedRecords = null;
 
 const DIVISION_ORDER_BY_LEAGUE = {
-  103: [200, 201, 202],
-  104: [203, 204, 205],
+  103: [201, 202, 200], // 東・中・西の順で表示
+  104: [204, 205, 203],
 };
 
 function clinchTag(team) {

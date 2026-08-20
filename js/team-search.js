@@ -43,7 +43,7 @@ const TEAM_POSITIONS = {
   137: [39, 263],  // SF
 };
 
-const DIVISION_ORDER = [200, 201, 202, 203, 204, 205];
+const DIVISION_ORDER = [201, 202, 200, 204, 205, 203]; // 東・中・西の順で表示
 
 let favoriteTeamIds = new Set();
 let query = '';

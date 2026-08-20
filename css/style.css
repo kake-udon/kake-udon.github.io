@@ -710,6 +710,209 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
   font-size: 16px;
 }
 
+/* ---- チーム日程シート：月カレンダー ---- */
+.calendar-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.calendar-nav-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--bg-panel-2);
+  color: var(--chalk);
+  font-size: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.calendar-nav-btn:active { background: rgba(255,255,255,0.06); }
+.calendar-month-label {
+  font-family: 'Oswald', sans-serif;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  color: var(--chalk);
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+.calendar-weekday {
+  text-align: center;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 10.5px;
+  color: var(--chalk-dim);
+  padding-bottom: 4px;
+}
+.calendar-cell {
+  min-height: 58px;
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 3px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.calendar-cell.empty { background: transparent; border-color: transparent; }
+.calendar-cell.today { border-color: var(--amber); }
+.calendar-day-num {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 10px;
+  color: var(--chalk-dim);
+  padding: 1px 2px 0;
+}
+.calendar-cell.today .calendar-day-num { color: var(--amber-soft); font-weight: 700; }
+
+.calendar-game-chip {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  background: var(--bg-panel-2);
+  border: none;
+  border-radius: 5px;
+  padding: 2px 3px;
+  cursor: pointer;
+  color: var(--chalk);
+  font-family: 'Noto Sans JP', sans-serif;
+}
+.calendar-game-chip .calendar-chip-dot {
+  width: 6px; height: 6px; border-radius: 2px; flex-shrink: 0;
+}
+.calendar-chip-opp {
+  font-size: 9px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  text-align: left;
+}
+.calendar-chip-result {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 9px;
+  flex-shrink: 0;
+}
+.calendar-game-chip.win .calendar-chip-result { color: var(--win); }
+.calendar-game-chip.loss .calendar-chip-result { color: var(--loss); }
+.calendar-game-chip.draw .calendar-chip-result { color: var(--chalk-dim); }
+.calendar-game-chip.live .calendar-chip-result { color: var(--loss); }
+.calendar-game-chip.scheduled .calendar-chip-result { color: var(--amber-soft); }
+
+/* ---- 試合詳細シート：スコアボード・打席結果 ---- */
+.game-sheet-header {
+  background: var(--bg-panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 14px;
+}
+.game-sheet-date {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 12px;
+  color: var(--chalk-dim);
+  margin: 8px 0 10px;
+}
+.game-sheet-matchup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.game-sheet-team {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.game-sheet-team .team-label { flex: 1; }
+
+.linescore-scroll {
+  overflow-x: auto;
+  margin-top: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}
+table.linescore-table {
+  border-collapse: collapse;
+  font-size: 12px;
+  width: 100%;
+}
+table.linescore-table th, table.linescore-table td {
+  padding: 7px 8px;
+  text-align: center;
+  font-family: 'Roboto Mono', monospace;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+table.linescore-table thead th {
+  color: var(--chalk-dim);
+  font-size: 10.5px;
+  font-weight: 500;
+  border-bottom: 1px solid var(--line);
+}
+table.linescore-table tr:last-child td { border-bottom: none; }
+.linescore-team-col {
+  text-align: left !important;
+  font-family: 'Noto Sans JP', sans-serif !important;
+}
+.linescore-team-inner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.linescore-total {
+  color: var(--amber-soft);
+  font-weight: 700;
+}
+
+.pbp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pbp-inning-header {
+  font-family: 'Oswald', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  color: var(--amber-soft);
+  margin-top: 10px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--line);
+}
+.pbp-play {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+}
+.pbp-play.scoring { border-color: var(--amber-dim); }
+.pbp-play-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.pbp-batter { font-size: 14px; font-weight: 500; }
+.pbp-event {
+  font-family: 'Oswald', sans-serif;
+  font-size: 12px;
+  color: var(--amber-soft);
+  flex-shrink: 0;
+}
+.pbp-play-desc {
+  font-size: 12px;
+  color: var(--chalk-dim);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+.pbp-play-pitcher {
+  font-size: 11px;
+  color: var(--chalk-dim);
+  margin-top: 4px;
+}
+
 .spinner {
   width: 22px;
   height: 22px;

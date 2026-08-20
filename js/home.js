@@ -1,7 +1,7 @@
 import { getGamesForJstDate, addDaysToDateString, toJstDateString, formatJstTime, formatJstDateLabel } from './api.js';
 import { teamName, teamColor, TEAMS } from './teams.js';
 import { getFavorites, toggleFavorite } from './db.js';
-import { openTeamSheet } from './team-sheet.js';
+import { openGameSheet } from './game-sheet.js';
 import { pickTrivia } from './trivia.js';
 import { isSupported, getPermissionState, getSubscription, enableNotifications, disableNotifications, syncFavoriteTeams } from './notifications.js';
 
@@ -155,8 +155,7 @@ function setOfflineBadge(offline) {
 function wireGameCardTaps(container) {
   container.querySelectorAll('.game-card').forEach((btn) => {
     btn.onclick = () => {
-      const homeId = Number(btn.dataset.home);
-      openTeamSheet(homeId);
+      openGameSheet(Number(btn.dataset.gamepk));
     };
   });
 }

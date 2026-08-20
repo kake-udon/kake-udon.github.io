@@ -1,6 +1,9 @@
-import { getTeamSchedule, getStandings, addDaysToDateString, toJstDateString, formatJstTime, formatJstDateLabel, currentSeasonYear } from './api.js';
-import { teamName, teamColor, DIVISIONS } from './teams.js';
+import { getTeamScheduleByJstMonth, getStandings, toJstDateString, formatJstTime, currentSeasonYear } from './api.js';
+import { teamName, teamShort, teamColor, DIVISIONS } from './teams.js';
 import { getFavorites, toggleFavorite } from './db.js';
+import { openGameSheet } from './game-sheet.js';
+
+const WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
 
 function starIcon(filled) {
   return `<svg width="18" height="18" viewBox="0 0 24 24" fill="${filled ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.8"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>`;
@@ -10,6 +13,11 @@ export async function openTeamSheet(teamId) {
   const root = document.getElementById('sheet-root');
   const favorites = await getFavorites();
   let isFav = favorites.some((f) => f.favKey === `team:${teamId}`);
+
+  const todayJst = toJstDateString();
+  const [todayYear, todayMonth] = todayJst.split('-').map(Number);
+  let viewYear = todayYear;
+  let viewMonth = todayMonth;
 
   root.innerHTML = `
     <div class="sheet-backdrop" id="sheet-backdrop">
@@ -23,6 +31,11 @@ export async function openTeamSheet(teamId) {
         </div>
         <div id="team-standing-summary"></div>
         <div class="section-title" style="margin-top:18px;">試合カレンダー</div>
+        <div class="calendar-nav">
+          <button class="calendar-nav-btn" id="cal-prev" aria-label="前の月">‹</button>
+          <div class="calendar-month-label" id="cal-month-label"></div>
+          <button class="calendar-nav-btn" id="cal-next" aria-label="次の月">›</button>
+        </div>
         <div id="team-sheet-body"><div class="spinner"></div></div>
       </div>
     </div>
@@ -41,25 +54,19 @@ export async function openTeamSheet(teamId) {
     btn.innerHTML = starIcon(isFav);
   };
 
+  document.getElementById('cal-prev').onclick = () => {
+    viewMonth -= 1;
+    if (viewMonth < 1) { viewMonth = 12; viewYear -= 1; }
+    loadCalendar(teamId, viewYear, viewMonth, todayJst);
+  };
+  document.getElementById('cal-next').onclick = () => {
+    viewMonth += 1;
+    if (viewMonth > 12) { viewMonth = 1; viewYear += 1; }
+    loadCalendar(teamId, viewYear, viewMonth, todayJst);
+  };
+
   loadStandingSummary(teamId);
-
-  const today = toJstDateString();
-  const startDate = addDaysToDateString(today, -6);
-  const endDate = addDaysToDateString(today, 6);
-
-  try {
-    const { games } = await getTeamSchedule(teamId, startDate, endDate);
-    const body = document.getElementById('team-sheet-body');
-    if (!body) return; // シートが既に閉じられている場合
-    if (!games.length) {
-      body.innerHTML = `<div class="empty-state">直近の試合情報が見つかりませんでした。</div>`;
-      return;
-    }
-    body.innerHTML = games.map((g) => renderRow(g, teamId)).join('');
-  } catch (e) {
-    const body = document.getElementById('team-sheet-body');
-    if (body) body.innerHTML = `<div class="empty-state">試合カレンダーを取得できませんでした。</div>`;
-  }
+  loadCalendar(teamId, viewYear, viewMonth, todayJst);
 }
 
 async function loadStandingSummary(teamId) {
@@ -100,33 +107,96 @@ function renderStandingSummary(standing) {
   `;
 }
 
-function renderRow(game, teamId) {
+async function loadCalendar(teamId, year, month, todayJst) {
+  const labelEl = document.getElementById('cal-month-label');
+  if (labelEl) labelEl.textContent = `${year}年${month}月`;
+
+  const body = document.getElementById('team-sheet-body');
+  if (body) body.innerHTML = `<div class="spinner"></div>`;
+
+  try {
+    const { byDate } = await getTeamScheduleByJstMonth(teamId, year, month);
+    const target = document.getElementById('team-sheet-body');
+    if (!target) return; // シートが既に閉じられている場合
+    target.innerHTML = renderMonthGrid(year, month, byDate, teamId, todayJst);
+    wireCalendarTaps(target);
+  } catch (e) {
+    const target = document.getElementById('team-sheet-body');
+    if (target) target.innerHTML = `<div class="empty-state">試合カレンダーを取得できませんでした。</div>`;
+  }
+}
+
+function renderMonthGrid(year, month, byDate, teamId, todayJst) {
+  const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const totalCells = Math.ceil((firstWeekday + daysInMonth) / 7) * 7;
+
+  const weekdayHeader = WEEKDAY_LABELS.map((w) => `<div class="calendar-weekday">${w}</div>`).join('');
+
+  const cells = [];
+  for (let i = 0; i < totalCells; i++) {
+    const dayNum = i - firstWeekday + 1;
+    if (dayNum < 1 || dayNum > daysInMonth) {
+      cells.push(`<div class="calendar-cell empty"></div>`);
+      continue;
+    }
+    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+    const games = byDate[dateStr] || [];
+    const isToday = dateStr === todayJst;
+    cells.push(renderDayCell(dayNum, dateStr, games, teamId, isToday));
+  }
+
+  return `
+    <div class="calendar-grid">
+      ${weekdayHeader}
+      ${cells.join('')}
+    </div>
+  `;
+}
+
+function renderDayCell(dayNum, dateStr, games, teamId, isToday) {
+  const chips = games.map((g) => renderGameChip(g, teamId)).join('');
+  return `
+    <div class="calendar-cell ${isToday ? 'today' : ''} ${games.length ? 'has-game' : ''}">
+      <span class="calendar-day-num">${dayNum}</span>
+      ${chips}
+    </div>
+  `;
+}
+
+function renderGameChip(game, teamId) {
   const isHome = game.teams.home.team.id === teamId;
   const opponent = isHome ? game.teams.away : game.teams.home;
   const self = isHome ? game.teams.home : game.teams.away;
   const isFinal = game.status.abstractGameState === 'Final';
   const started = game.status.abstractGameState !== 'Preview';
 
-  let resultLabel = formatJstTime(game.gameDate) + ' 開始';
+  let label = formatJstTime(game.gameDate);
+  let cls = 'scheduled';
   if (isFinal) {
     const selfScore = self.score ?? 0;
     const oppScore = opponent.score ?? 0;
-    const wl = selfScore > oppScore ? '○' : selfScore < oppScore ? '●' : '△';
-    resultLabel = `${wl} ${selfScore}-${oppScore}`;
+    label = selfScore > oppScore ? '○' : selfScore < oppScore ? '●' : '△';
+    cls = selfScore > oppScore ? 'win' : selfScore < oppScore ? 'loss' : 'draw';
   } else if (started) {
-    resultLabel = `試合中 ${self.score ?? 0}-${opponent.score ?? 0}`;
+    label = '試合中';
+    cls = 'live';
   }
 
   return `
-    <div class="game-card" style="cursor:default;margin-bottom:8px;">
-      <div class="status-row">
-        <span class="game-time">${formatJstDateLabel(game.gameDate)}</span>
-        <span class="status-pill ${isFinal ? 'final' : started ? 'live' : 'scheduled'}">${resultLabel}</span>
-      </div>
-      <div class="team-line">
-        <span class="team-dot" style="background:${teamColor(opponent.team.id)}"></span>
-        <span class="team-label">${isHome ? 'vs' : '@'} ${teamName(opponent.team.id)}</span>
-      </div>
-    </div>
+    <button class="calendar-game-chip ${cls}" data-gamepk="${game.gamePk}" title="${isHome ? 'vs' : '@'} ${teamName(opponent.team.id)}">
+      <span class="calendar-chip-dot" style="background:${teamColor(opponent.team.id)}"></span>
+      <span class="calendar-chip-opp">${isHome ? 'vs' : '@'}${teamShort(opponent.team.id)}</span>
+      <span class="calendar-chip-result">${label}</span>
+    </button>
   `;
+}
+
+function wireCalendarTaps(container) {
+  container.querySelectorAll('.calendar-game-chip').forEach((chip) => {
+    chip.onclick = (e) => {
+      e.stopPropagation();
+      openGameSheet(Number(chip.dataset.gamepk));
+    };
+  });
 }
