@@ -1,0 +1,9 @@
+{
+  "name": "mlb-watch-notify",
+  "private": true,
+  "type": "module",
+  "description": "GitHub Actionsから毎日のPush通知ダイジェストを送信するためのCI専用パッケージ。クライアント（js/*.js）はバンドラーなしのES Modulesのまま。",
+  "dependencies": {
+    "web-push": "^3.6.7"
+  }
+}

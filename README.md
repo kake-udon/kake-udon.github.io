@@ -20,29 +20,51 @@
 
 ## 未実装（次のロードマップ）
 
-- チーム検索（地図プロット・チーム詳細） … ロードマップ2
-- 選手検索機能 … ロードマップ3
-- お気に入り選手の個人結果まとめ … ロードマップ4
-- 豆知識コンテンツの拡充 … ロードマップ5
-- Web Push通知（Android優先） … ロードマップ6
+- MLBルール解説
+
+## Web Push通知（毎日18時ダイジェスト）のセットアップ
+
+ロードマップ6として、毎日18時（JST）にお気に入りチームの当日結果・次戦予定をプッシュ通知するダイジェスト機能を実装済みです。ただしGitHub Pagesは静的ホスティングのため、購読情報の保存と送信トリガーには外部サービス（Supabase / GitHub Actions）が必要です。**以下の設定は初回のみ、リポジトリのオーナーが手動で行ってください。**
+
+### 1. Supabaseプロジェクトを作成する
+1. https://supabase.com で無料アカウント・新規プロジェクトを作成
+2. 左メニューの SQL Editor を開き、[`supabase/schema.sql`](supabase/schema.sql) の内容をそのまま実行してテーブルを作成
+3. Project Settings → API から以下をコピーしておく
+   - Project URL
+   - `anon` `public` キー
+   - `service_role` `secret` キー（**外部に漏らさないこと**）
+
+### 2. クライアント側にSupabase接続情報を設定する
+[`js/notifications.js`](js/notifications.js) 冒頭の以下2行を、上記でコピーした値に書き換える（この2値は公開前提のためコードにそのまま埋め込んでよい）。
+```js
+const SUPABASE_URL = 'https://YOUR-PROJECT.supabase.co';
+const SUPABASE_ANON_KEY = 'YOUR-ANON-PUBLIC-KEY';
+```
+
+### 3. GitHub Secretsを設定する
+リポジトリの Settings → Secrets and variables → Actions → New repository secret から、以下4つを登録する。
+
+| Secret名 | 値 |
+|---|---|
+| `SUPABASE_URL` | 手順1でコピーしたProject URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | 手順1でコピーした`service_role`キー |
+| `VAPID_PUBLIC_KEY` | `js/notifications.js`に埋め込まれているVAPID公開鍵と同じ値 |
+| `VAPID_PRIVATE_KEY` | VAPID秘密鍵（実装時に生成済み。チャットで共有された値。**絶対にリポジトリにコミットしない**） |
+
+### 4. デプロイして実機で確認する
+1. 変更をコミットしてGitHub Pagesへpush
+2. Android版Chromeでサイトを開き、「ホーム画面に追加」でPWAとしてインストール
+3. インストールしたPWAの表紙画面 →「通知設定」のトグルをONにして通知を許可
+4. GitHubリポジトリの Actions タブ →「Send push notification digest」→「Run workflow」を`force: true`で実行し、実機に即座にテスト通知が届くか確認
+5. 以降は毎日18:00 JST（09:00 UTC）に自動送信される
+
+### 注意点
+- `push_subscriptions`テーブルは氏名・メールアドレス等の個人情報を含まない（Push購読エンドポイントとお気に入りチームIDのみ）ため、RLSは`anon`キーからの読み書きを許可する簡易な設計にしている。
+- GitHub Actionsのcronは60日間リポジトリへの操作がないと自動停止する仕様があるため、長期間コミットが無い場合は再度手動実行や軽微なコミットが必要になることがある。
 
 ## ファイル構成
 
-```
-index.html
-manifest.json
-service-worker.js
-css/style.css
-js/
-  app.js        … ルーティング・時計・SW登録
-  api.js        … MLB Stats API ラッパー、JST日付処理、キャッシュ制御
-  db.js         … IndexedDBラッパー（APIキャッシュ・お気に入り）
-  teams.js      … 30球団のメタデータ（日本語名・地区・カラー）
-  home.js       … 表紙画面
-  standings.js  … 順位表画面
-  team-sheet.js … チーム試合カレンダーのボトムシート
-icons/          … オリジナル生成したアプリアイコン（商標不使用）
-```
+詳細は[`CLAUDE.md`](CLAUDE.md)のディレクトリ構成を参照してください。
 
 ## GitHub Pagesへのデプロイ手順
 

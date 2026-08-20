@@ -1,6 +1,6 @@
 // アプリシェル（静的アセット）のキャッシュを担当。
 // 試合データ・順位表データのキャッシュは js/db.js の IndexedDB 側で行う。
-const CACHE_NAME = 'mlb-watch-shell-v2';
+const CACHE_NAME = 'mlb-watch-shell-v6';
 const SHELL_ASSETS = [
   './',
   './index.html',
@@ -10,9 +10,14 @@ const SHELL_ASSETS = [
   './js/api.js',
   './js/db.js',
   './js/home.js',
+  './js/trivia.js',
+  './js/notifications.js',
   './js/standings.js',
   './js/team-sheet.js',
   './js/team-search.js',
+  './js/player-search.js',
+  './js/player-sheet.js',
+  './js/my-players.js',
   './js/teams.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
@@ -61,6 +66,37 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => cached);
       return cached || networkFetch;
+    })
+  );
+});
+
+// Web Push通知の受信（送信元は scripts/send-notifications.mjs、毎日18時JSTのダイジェスト）
+self.addEventListener('push', (event) => {
+  let data = { title: 'MLB Watch', body: '新着情報があります。' };
+  if (event.data) {
+    try {
+      data = { ...data, ...event.data.json() };
+    } catch (e) {
+      data.body = event.data.text();
+    }
+  }
+  const options = {
+    body: data.body,
+    icon: './icons/icon-192.png',
+    badge: './icons/icon-192.png',
+    data: { url: data.url || './index.html' },
+  };
+  event.waitUntil(self.registration.showNotification(data.title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) || './index.html';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientsArr) => {
+      const existing = clientsArr.find((c) => c.url.includes(self.registration.scope));
+      if (existing) return existing.focus();
+      return self.clients.openWindow(targetUrl);
     })
   );
 });

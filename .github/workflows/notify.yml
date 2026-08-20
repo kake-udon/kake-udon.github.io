@@ -1,0 +1,29 @@
+name: Send push notification digest
+
+on:
+  schedule:
+    # 09:00 UTC = 18:00 JST（日本にサマータイムはないため年間固定）
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: '本日分の送信済みガードを無視して即時テスト送信する'
+        type: boolean
+        default: false
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install
+      - run: node scripts/send-notifications.mjs
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          FORCE_SEND: ${{ inputs.force }}

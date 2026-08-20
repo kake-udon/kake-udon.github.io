@@ -145,3 +145,22 @@ export async function getStandings(season) {
 export function currentSeasonYear() {
   return Number(toJstDateString().slice(0, 4));
 }
+
+// --- 選手検索 ---
+
+// 現役選手全員の一覧を取得（名前・所属チーム・ポジションなどの基本プロフィール）
+export async function getAllPlayers(season) {
+  const url = `${BASE}/sports/1/players?season=${season}`;
+  const cacheKey = `players:${season}`;
+  const { data, fromCache, offline } = await cachedFetch(cacheKey, url);
+  return { players: data.people || [], fromCache, offline };
+}
+
+// 選手個人の詳細情報（当該シーズンの打撃・投手成績を含む）を取得
+export async function getPlayerDetail(personId, season) {
+  const url = `${BASE}/people/${personId}?hydrate=currentTeam,stats(group=%5Bhitting,pitching%5D,type=%5Bseason%5D,season=${season})`;
+  const cacheKey = `player-detail:${personId}:${season}`;
+  const { data, fromCache, offline } = await cachedFetch(cacheKey, url);
+  const person = (data.people || [])[0] || null;
+  return { person, fromCache, offline };
+}

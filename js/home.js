@@ -2,8 +2,11 @@ import { getGamesForJstDate, addDaysToDateString, toJstDateString, formatJstTime
 import { teamName, teamColor, TEAMS } from './teams.js';
 import { getFavorites, toggleFavorite } from './db.js';
 import { openTeamSheet } from './team-sheet.js';
+import { pickTrivia } from './trivia.js';
+import { isSupported, getPermissionState, getSubscription, enableNotifications, disableNotifications, syncFavoriteTeams } from './notifications.js';
 
 let favoriteTeamIds = new Set();
+let currentTrivia = null;
 
 function statusInfo(game) {
   const state = game.status.abstractGameState; // Preview / Live / Final
@@ -98,6 +101,8 @@ export async function renderHome(container) {
   container.innerHTML = `
     <div class="section-title">お気に入り</div>
     ${renderTeamPicker()}
+    <div class="section-title">通知設定</div>
+    <div id="notification-section"><div class="spinner"></div></div>
     <div class="section-title">本日の試合 <span class="count" id="today-count"></span></div>
     <div id="today-games"><div class="spinner"></div></div>
     <details class="collapsible" style="margin-top:22px;">
@@ -107,12 +112,18 @@ export async function renderHome(container) {
       </summary>
       <div id="yesterday-games" style="margin-top:10px;"><div class="spinner"></div></div>
     </details>
-    <div class="section-title">豆知識</div>
-    <div class="trivia-card">${randomTrivia()}</div>
+    <div class="section-title">豆知識
+      <button id="trivia-refresh" class="trivia-refresh-btn" aria-label="別の豆知識を見る">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.6-6.36"/><path d="M21 4v5h-5"/></svg>
+      </button>
+    </div>
+    <div id="trivia-wrap">${renderTriviaCard()}</div>
   `;
 
   wireTeamPicker(container);
   wireGameCardTaps(container);
+  wireTriviaRefresh(container);
+  renderNotificationSection(container);
 
   const todayJst = toJstDateString();
   const yesterdayJst = addDaysToDateString(todayJst, -1);
@@ -165,17 +176,77 @@ function wireTeamPicker(container) {
         const home = Number(card.dataset.home);
         card.classList.toggle('is-favorite', favoriteTeamIds.has(away) || favoriteTeamIds.has(home));
       });
+      syncFavoriteTeams(favoriteTeamIds);
     };
   });
 }
 
-const TRIVIA = [
-  'ピッチクロックは投手が捕手からボールを受け取ってから、走者なしの場合15秒、走者ありの場合20秒以内に投球動作を開始しないと違反となるルールです。',
-  'ABSチャレンジ（自動ボール・ストライク判定への異議）は、打者・投手・捕手のいずれかが可能で、1試合につき各チーム2回まで、成功すれば回数は減りません。',
-  'ポストシーズンは各リーグの地区優勝3チームとワイルドカード3チームの計6チームで争われ、地区優勝チームのうち成績上位2チームはワイルドカードシリーズを免除されます。',
-  'ワールドシリーズは7戦4勝制で、アメリカン・リーグとナショナル・リーグの優勝チームが対戦します。',
-  'セーブの条件は、リードした状態で試合を終えた救援投手が、3点差以内で1イニング以上を投げる、または最低3イニングを投げる、など複数のパターンがあります。',
-];
-function randomTrivia() {
-  return TRIVIA[Math.floor(Math.random() * TRIVIA.length)];
+// 通知設定：対応状況・許可状態に応じてトグルを表示し、有効/無効の切り替えを行う
+async function renderNotificationSection(container) {
+  const wrap = container.querySelector('#notification-section');
+  if (!wrap) return;
+
+  if (!isSupported()) {
+    wrap.innerHTML = `<div class="empty-state">お使いのブラウザは通知に対応していません。</div>`;
+    return;
+  }
+
+  if (getPermissionState() === 'denied') {
+    wrap.innerHTML = `<div class="empty-state">通知がブラウザでブロックされています。ブラウザの設定から許可してください。</div>`;
+    return;
+  }
+
+  const subscription = await getSubscription();
+  const wrapNow = container.querySelector('#notification-section');
+  if (!wrapNow) return; // 取得中に画面が切り替わった場合
+  const enabled = !!subscription;
+
+  wrapNow.innerHTML = `
+    <div class="notify-toggle-row">
+      <div>
+        <div class="notify-toggle-label">毎日18時に試合結果と次戦予定をお知らせ</div>
+        <div class="notify-toggle-sub" id="notify-toggle-sub">${enabled ? '通知は有効です' : 'お気に入りチームの情報をプッシュ通知で受け取れます'}</div>
+      </div>
+      <button id="notify-toggle-btn" class="toggle-switch ${enabled ? 'on' : ''}" role="switch" aria-checked="${enabled}" aria-label="通知の有効・無効を切り替え">
+        <span class="toggle-knob"></span>
+      </button>
+    </div>
+  `;
+
+  const btn = wrapNow.querySelector('#notify-toggle-btn');
+  btn.onclick = async () => {
+    btn.disabled = true;
+    const subLabel = wrapNow.querySelector('#notify-toggle-sub');
+    try {
+      if (enabled) {
+        await disableNotifications();
+      } else {
+        if (subLabel) subLabel.textContent = '設定中…';
+        await enableNotifications(favoriteTeamIds);
+      }
+      renderNotificationSection(container);
+    } catch (e) {
+      if (subLabel) subLabel.textContent = e.message || '通知設定の変更に失敗しました';
+      btn.disabled = false;
+    }
+  };
+}
+
+function renderTriviaCard() {
+  currentTrivia = pickTrivia(currentTrivia ? currentTrivia.text : null);
+  return `
+    <div class="trivia-card">
+      <span class="trivia-tag">${currentTrivia.category}</span>
+      ${currentTrivia.text}
+    </div>
+  `;
+}
+
+function wireTriviaRefresh(container) {
+  const btn = container.querySelector('#trivia-refresh');
+  if (!btn) return;
+  btn.onclick = () => {
+    const wrap = container.querySelector('#trivia-wrap');
+    if (wrap) wrap.innerHTML = renderTriviaCard();
+  };
 }
