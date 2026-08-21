@@ -247,31 +247,6 @@ main {
 .collapsible .chevron { transition: transform 0.2s ease; color: var(--chalk-dim); }
 .collapsible[open] .chevron { transform: rotate(90deg); }
 
-/* ---- お気に入りチーム選択チップ ---- */
-.team-chip-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
-  gap: 8px;
-}
-.team-chip {
-  font-family: 'Noto Sans JP', sans-serif;
-  font-size: 12px;
-  color: var(--chalk);
-  background: var(--bg-panel);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  padding: 10px 6px;
-  text-align: center;
-  cursor: pointer;
-}
-.team-chip.selected {
-  border-color: var(--amber);
-  background: linear-gradient(180deg, rgba(255,179,0,0.14), rgba(255,179,0,0.03));
-}
-.team-chip .dot {
-  width: 10px; height: 10px; border-radius: 50%;
-  margin: 0 auto 6px;
-}
 
 /* ---- 順位表 ---- */
 .league-tabs {
@@ -403,8 +378,6 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
   transition: r 0.15s ease, opacity 0.15s ease, stroke 0.15s ease;
 }
 .team-dot-map.is-favorite .dot-core { stroke: var(--amber); stroke-width: 2.5; }
-.team-dot-map.dimmed .dot-core { opacity: 0.2; }
-.team-dot-map.highlighted .dot-core { r: 11; }
 .team-dot-map:focus { outline: none; }
 .team-dot-map:focus .dot-core { stroke: var(--amber-soft); stroke-width: 2.5; }
 

@@ -4,6 +4,7 @@ import { getFavorites, toggleFavorite } from './db.js';
 import { openGameSheet } from './game-sheet.js';
 import { openPlayerSheet, positionJa } from './player-sheet.js';
 import { closeSheet, pushSheetBack } from './sheet-stack.js';
+import { syncFavoriteTeams } from './notifications.js';
 
 const WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
 
@@ -62,6 +63,8 @@ export async function openTeamSheet(teamId) {
     if (!btn) return;
     btn.classList.toggle('active', isFav);
     btn.innerHTML = starIcon(isFav);
+    const favs = await getFavorites();
+    syncFavoriteTeams(favs.filter((f) => f.type === 'team').map((f) => f.id));
   };
 
   document.getElementById('cal-prev').onclick = () => {
