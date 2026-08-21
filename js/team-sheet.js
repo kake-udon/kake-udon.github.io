@@ -1,5 +1,5 @@
 import { getTeamScheduleByJstMonth, getStandings, getTeamRoster, toJstDateString, formatJstTime, currentSeasonYear } from './api.js';
-import { teamName, teamShort, teamColor, DIVISIONS } from './teams.js';
+import { teamName, teamShort, teamColor, TEAMS, DIVISIONS } from './teams.js';
 import { getFavorites, toggleFavorite } from './db.js';
 import { openGameSheet } from './game-sheet.js';
 import { openPlayerSheet, positionJa } from './player-sheet.js';
@@ -10,6 +10,20 @@ const WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
 
 function starIcon(filled) {
   return `<svg width="18" height="18" viewBox="0 0 24 24" fill="${filled ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.8"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>`;
+}
+
+// チーム名の下に表示する基本情報（創設年・リーグ優勝回数・WS優勝回数・公式サイト）
+function renderTeamMeta(teamId) {
+  const t = TEAMS[teamId];
+  if (!t) return '';
+  const facts = [];
+  if (t.founded) facts.push(`${t.founded}年創設`);
+  if (t.pennants != null) facts.push(`リーグ優勝${t.pennants}回`);
+  if (t.worldSeries != null) facts.push(`WS優勝${t.worldSeries}回`);
+  const link = t.homepage
+    ? `<a class="team-sheet-link" href="${t.homepage}" target="_blank" rel="noopener noreferrer">公式サイト<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M9 7h8v8"/></svg></a>`
+    : '';
+  return `<div class="team-sheet-meta">${facts.join('　')}${link}</div>`;
 }
 
 export async function openTeamSheet(teamId) {
@@ -26,7 +40,10 @@ export async function openTeamSheet(teamId) {
     <div class="sheet-backdrop" id="sheet-backdrop">
       <div class="sheet">
         <div class="sheet-header">
-          <h2><span class="team-dot" style="background:${teamColor(teamId)}"></span>${teamName(teamId)}</h2>
+          <div class="sheet-header-title">
+            <h2><span class="team-dot" style="background:${teamColor(teamId)}"></span>${teamName(teamId)}</h2>
+            ${renderTeamMeta(teamId)}
+          </div>
           <div class="sheet-header-actions">
             <button class="fav-toggle-btn ${isFav ? 'active' : ''}" id="sheet-fav-btn" aria-label="お気に入り登録・解除">${starIcon(isFav)}</button>
             <button class="sheet-close" id="sheet-close">×</button>
@@ -115,7 +132,7 @@ function renderRosterRow(entry, favoritePlayerIds) {
   const person = entry.person;
   const isFav = favoritePlayerIds.has(person.id);
   return `
-    <button class="player-search-row" data-personid="${person.id}">
+    <button class="player-search-row roster-player-row" data-personid="${person.id}">
       <span class="player-row-name">${person.fullName}</span>
       <span class="player-row-meta">${positionJa(entry.position)}</span>
       ${isFav ? '<span class="fav-star-mini">★</span>' : ''}
