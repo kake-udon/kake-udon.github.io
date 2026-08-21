@@ -60,8 +60,8 @@ function renderMap() {
     const cls = ['team-dot-map', isFav ? 'is-favorite' : ''].filter(Boolean).join(' ');
     return `
       <g class="${cls}" data-teamid="${id}" tabindex="0" role="button" aria-label="${t.name}">
-        <circle cx="${pos[0]}" cy="${pos[1]}" r="16" fill="transparent" />
-        <circle class="dot-core" cx="${pos[0]}" cy="${pos[1]}" r="7" style="fill:${t.color}" />
+        <circle cx="${pos[0]}" cy="${pos[1]}" r="20" fill="transparent" />
+        <circle class="dot-core" cx="${pos[0]}" cy="${pos[1]}" r="10" style="fill:${t.color}" />
       </g>
     `;
   }).join('');

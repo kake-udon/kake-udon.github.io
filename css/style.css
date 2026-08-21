@@ -463,6 +463,9 @@ table.standings-table tbody tr:active { background: var(--press); }
   cursor: pointer;
 }
 .player-search-row:active { background: var(--press); }
+/* チームシート内の選手一覧ボタンはシートと同じ白背景で判別しづらいため、チーム成績と同じ配色にする */
+.roster-player-row { background: var(--bg-panel-2); }
+.roster-player-row:active { background: var(--press); }
 .player-row-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .player-row-meta {
   font-family: 'Roboto Mono', monospace;
@@ -703,6 +706,10 @@ table.standings-table tbody tr:active { background: var(--press); }
   justify-content: space-between;
   margin-bottom: 14px;
 }
+.sheet-header-title {
+  flex: 1;
+  min-width: 0;
+}
 .sheet-header h2 {
   font-family: 'Oswald', sans-serif;
   font-size: 20px;
@@ -711,6 +718,25 @@ table.standings-table tbody tr:active { background: var(--press); }
   align-items: center;
   gap: 8px;
 }
+.team-sheet-meta,
+.player-sheet-meta {
+  font-size: 13px;
+  color: var(--chalk-dim);
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+.team-sheet-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--amber-soft);
+  text-decoration: none;
+  font-weight: 500;
+}
+.team-sheet-link:active { color: var(--amber); }
 .sheet-close {
   background: var(--bg-panel-2);
   border: none;

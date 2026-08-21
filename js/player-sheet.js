@@ -24,6 +24,58 @@ function starIcon(filled) {
   return `<svg width="18" height="18" viewBox="0 0 24 24" fill="${filled ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.8"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>`;
 }
 
+// MLB Stats APIの身長表記（例："6' 2\""）をcmに変換
+function heightToCm(heightStr) {
+  if (!heightStr) return null;
+  const m = String(heightStr).match(/(\d+)'\s*(\d+)"/);
+  if (!m) return null;
+  const totalInches = Number(m[1]) * 12 + Number(m[2]);
+  return Math.round(totalInches * 2.54);
+}
+
+// lb表記の体重をkgに変換
+function weightToKg(weightLbs) {
+  if (!weightLbs) return null;
+  return Math.round(weightLbs * 0.453592);
+}
+
+// 出身地（市 + 州/国）を組み立てる。日本語訳データがないため原語表記のまま表示する
+function formatBirthplace(person) {
+  const parts = [];
+  if (person.birthCity) parts.push(person.birthCity);
+  if (person.birthCountry === 'USA' && person.birthStateProvince) {
+    parts.push(person.birthStateProvince);
+  } else if (person.birthCountry) {
+    parts.push(person.birthCountry);
+  }
+  return parts.join(', ');
+}
+
+function formatBirthDateJa(birthDateStr) {
+  if (!birthDateStr) return '';
+  const [y, m, d] = birthDateStr.split('-').map(Number);
+  if (!y || !m || !d) return '';
+  return `${y}年${m}月${d}日`;
+}
+
+// 名前の下に表示するプロフィール情報（身長・体重・出身地・誕生日/年齢・デビュー年）
+function renderProfileMeta(person) {
+  const items = [];
+  const heightCm = heightToCm(person.height);
+  if (heightCm) items.push(`身長${heightCm}cm`);
+  const weightKg = weightToKg(person.weight);
+  if (weightKg) items.push(`体重${weightKg}kg`);
+  const birthplace = formatBirthplace(person);
+  if (birthplace) items.push(`出身${birthplace}`);
+  if (person.birthDate) {
+    const age = person.currentAge != null ? `（${person.currentAge}歳）` : '';
+    items.push(`誕生日${formatBirthDateJa(person.birthDate)}${age}`);
+  }
+  if (person.mlbDebutDate) items.push(`${person.mlbDebutDate.slice(0, 4)}年デビュー`);
+  if (!items.length) return '';
+  return `<div class="player-sheet-meta">${items.join('　')}</div>`;
+}
+
 export function positionJa(pos) {
   if (!pos) return '';
   return POSITION_JA[pos.name] || pos.abbreviation || pos.name;
@@ -110,7 +162,10 @@ export async function openPlayerSheet(personId) {
     <div class="sheet-backdrop" id="sheet-backdrop">
       <div class="sheet">
         <div class="sheet-header">
-          <h2 id="player-sheet-name">読み込み中…</h2>
+          <div class="sheet-header-title">
+            <h2 id="player-sheet-name">読み込み中…</h2>
+            <div class="player-sheet-meta" id="player-sheet-meta"></div>
+          </div>
           <div class="sheet-header-actions">
             <button class="fav-toggle-btn ${isFav ? 'active' : ''}" id="sheet-fav-btn" aria-label="お気に入り登録・解除">${starIcon(isFav)}</button>
             <button class="sheet-close" id="sheet-close">×</button>
@@ -142,6 +197,8 @@ export async function openPlayerSheet(personId) {
 
     const nameEl = document.getElementById('player-sheet-name');
     if (nameEl) nameEl.textContent = person.fullName;
+    const metaEl = document.getElementById('player-sheet-meta');
+    if (metaEl) metaEl.innerHTML = renderProfileMeta(person);
 
     const body = document.getElementById('player-sheet-body');
     if (!body) return; // シートが既に閉じられている場合
