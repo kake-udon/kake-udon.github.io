@@ -1,19 +1,34 @@
 @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Noto+Sans+JP:wght@400;500;700&family=Roboto+Mono:wght@500;700&display=swap');
 
+/* =========================================================
+   デザイントークン（ライトテーマ）
+   変数名は旧テーマのまま維持しているため、他のCSSは無変更で追従する。
+   ページ下部に暗色テーマ用の値をコメントで残してある。
+   ========================================================= */
 :root {
-  --bg-night: #0a1120;
-  --bg-panel: #121b2e;
-  --bg-panel-2: #16213a;
-  --turf: #1f4d36;
-  --turf-light: #2c6b4a;
-  --amber: #ffb300;
-  --amber-soft: #ffd166;
-  --amber-dim: #6b5218;
-  --chalk: #f4f1e8;
-  --chalk-dim: #98a2b8;
-  --line: rgba(244, 241, 232, 0.09);
-  --win: #57c278;
-  --loss: #ef5b52;
+  /* 面 */
+  --bg-night:   #eef2f7;   /* ページ全体の背景 */
+  --bg-panel:   #ffffff;   /* カード・パネル */
+  --bg-panel-2: #e6ebf3;   /* テーブルヘッダなど一段沈んだ面 */
+  --turf: #1f6b47;
+  --turf-light: #2c8a5c;
+
+  /* アクセント：明るい背景でも読める濃さに落としてある */
+  --amber:      #b26a00;   /* 主アクセント（スコア・選択中タブ） */
+  --amber-soft: #8f5b00;   /* 文字として使うアクセント */
+  --amber-dim:  #e0b878;   /* 枠線・淡い面 */
+
+  /* 文字 */
+  --chalk:     #16202e;    /* 本文 */
+  --chalk-dim: #5b6a7d;    /* 補助テキスト（白背景で約4.9:1） */
+
+  --line:      rgba(22, 32, 46, 0.14);
+  --press:     rgba(22, 32, 46, 0.07);  /* タップ時の沈み色 */
+  --on-accent: #ffffff;                 /* ベタ塗りの上に乗る文字 */
+  --shadow:    0 1px 2px rgba(16, 24, 40, 0.05), 0 3px 10px rgba(16, 24, 40, 0.05);
+
+  --win:  #17803d;
+  --loss: #c62828;
   --radius-lg: 18px;
   --radius-md: 12px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -33,17 +48,18 @@ body {
   font-family: 'Noto Sans JP', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+  line-height: 1.6;
 }
 
-/* 夜のスタジアム照明を思わせる背景演出 */
+/* デイゲームの空を思わせる、ごく淡い背景演出 */
 .stadium-glow {
   position: fixed;
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(600px 300px at 15% -10%, rgba(255, 179, 0, 0.14), transparent 60%),
-    radial-gradient(500px 260px at 90% -5%, rgba(255, 179, 0, 0.10), transparent 60%),
-    radial-gradient(800px 500px at 50% 110%, rgba(31, 77, 54, 0.25), transparent 60%),
+    radial-gradient(700px 340px at 12% -8%, rgba(255, 214, 150, 0.30), transparent 62%),
+    radial-gradient(620px 300px at 92% -4%, rgba(190, 214, 245, 0.40), transparent 62%),
+    radial-gradient(900px 520px at 50% 112%, rgba(31, 107, 71, 0.10), transparent 62%),
     var(--bg-night);
 }
 
@@ -62,13 +78,14 @@ body {
   position: sticky;
   top: 0;
   z-index: 5;
-  background: linear-gradient(180deg, rgba(10, 17, 32, 0.97) 70%, rgba(10, 17, 32, 0));
-  backdrop-filter: blur(6px);
+  background: color-mix(in srgb, var(--bg-night) 92%, transparent);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(8px);
 }
 
 .app-header .eyebrow {
   font-family: 'Oswald', sans-serif;
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 0.18em;
   color: var(--amber-soft);
   text-transform: uppercase;
@@ -86,7 +103,7 @@ body {
 
 .app-header .jst-clock {
   font-family: 'Roboto Mono', monospace;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--chalk-dim);
   margin-top: 6px;
 }
@@ -95,7 +112,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: 13px;
   color: var(--amber-soft);
   border: 1px solid var(--amber-dim);
   border-radius: 999px;
@@ -118,7 +135,7 @@ main {
 
 .section-title {
   font-family: 'Oswald', sans-serif;
-  font-size: 14px;
+  font-size: 16px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--chalk-dim);
@@ -141,12 +158,12 @@ main {
 }
 
 .game-card {
-  background:
-    repeating-linear-gradient(0deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 3px),
-    var(--bg-panel);
+  background: var(--bg-panel);
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
-  padding: 12px 14px;
+  box-shadow: var(--shadow);
+  padding: 14px 16px;
+  min-height: 44px;
   display: block;
   width: 100%;
   text-align: left;
@@ -154,8 +171,11 @@ main {
   cursor: pointer;
   transition: transform 0.15s ease, border-color 0.15s ease;
 }
-.game-card:active { transform: scale(0.985); }
-.game-card.is-favorite { border-color: var(--amber-dim); }
+.game-card:active { transform: scale(0.985); background: var(--press); }
+.game-card.is-favorite {
+  border-color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 6%, var(--bg-panel));
+}
 
 .game-card .status-row {
   display: flex;
@@ -166,19 +186,19 @@ main {
 
 .status-pill {
   font-family: 'Oswald', sans-serif;
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.08em;
   padding: 2px 8px;
   border-radius: 999px;
   text-transform: uppercase;
 }
-.status-pill.live { background: rgba(239, 91, 82, 0.18); color: var(--loss); }
-.status-pill.final { background: rgba(255,255,255,0.06); color: var(--chalk-dim); }
-.status-pill.scheduled { background: rgba(255, 179, 0, 0.14); color: var(--amber-soft); }
+.status-pill.live { background: color-mix(in srgb, var(--loss) 14%, transparent); color: var(--loss); font-weight: 700; }
+.status-pill.final { background: var(--bg-panel-2); color: var(--chalk-dim); }
+.status-pill.scheduled { background: color-mix(in srgb, var(--amber) 14%, transparent); color: var(--amber-soft); }
 
 .game-time {
   font-family: 'Roboto Mono', monospace;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--chalk-dim);
 }
 
@@ -204,7 +224,7 @@ main {
 }
 
 .team-label {
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -217,20 +237,20 @@ main {
 .score-digit {
   font-family: 'Roboto Mono', monospace;
   font-variant-numeric: tabular-nums;
-  font-size: 20px;
+  font-size: 28px;
   font-weight: 700;
   color: var(--amber);
-  text-shadow: 0 0 10px rgba(255, 179, 0, 0.45);
-  min-width: 22px;
+  min-width: 30px;
+  line-height: 1.15;
   text-align: right;
 }
-.score-digit.dim { color: var(--chalk-dim); text-shadow: none; }
+.score-digit.dim { color: var(--chalk-dim); }
 
 .empty-state {
   text-align: center;
   padding: 34px 16px;
   color: var(--chalk-dim);
-  font-size: 14px;
+  font-size: 16px;
   border: 1px dashed var(--line);
   border-radius: var(--radius-md);
 }
@@ -242,7 +262,13 @@ main {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-height: 44px;
+  padding: 8px 12px;
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
 }
+.collapsible summary:active { background: var(--press); }
 .collapsible summary::-webkit-details-marker { display: none; }
 .collapsible .chevron { transition: transform 0.2s ease; color: var(--chalk-dim); }
 .collapsible[open] .chevron { transform: rotate(90deg); }
@@ -258,7 +284,7 @@ main {
   flex: 1;
   font-family: 'Oswald', sans-serif;
   letter-spacing: 0.05em;
-  font-size: 14px;
+  font-size: 16px;
   padding: 10px;
   text-align: center;
   border-radius: var(--radius-md);
@@ -268,7 +294,7 @@ main {
   cursor: pointer;
 }
 .league-tab.active {
-  color: var(--bg-night);
+  color: var(--on-accent);
   background: var(--amber);
   border-color: var(--amber);
   font-weight: 700;
@@ -283,7 +309,7 @@ main {
 }
 .division-header {
   font-family: 'Oswald', sans-serif;
-  font-size: 13px;
+  font-size: 15px;
   letter-spacing: 0.06em;
   padding: 12px 14px;
   background: var(--bg-panel-2);
@@ -294,28 +320,29 @@ main {
 table.standings-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 15px;
 }
 table.standings-table th {
   font-family: 'Roboto Mono', monospace;
   font-weight: 500;
-  font-size: 10.5px;
+  font-size: 12px;
   color: var(--chalk-dim);
   text-align: right;
-  padding: 6px 10px;
+  padding: 8px 7px;
   border-bottom: 1px solid var(--line);
 }
 table.standings-table th:first-child, table.standings-table td:first-child {
   text-align: left;
 }
 table.standings-table td {
-  padding: 9px 10px;
+  padding: 12px 7px;
   border-bottom: 1px solid var(--line);
   font-family: 'Roboto Mono', monospace;
   text-align: right;
 }
 table.standings-table tr:last-child td { border-bottom: none; }
-table.standings-table tr:active { background: rgba(255,255,255,0.03); }
+table.standings-table tbody tr { cursor: pointer; }
+table.standings-table tbody tr:active { background: var(--press); }
 
 .team-cell {
   display: flex;
@@ -327,11 +354,11 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
 .rank-num {
   font-family: 'Roboto Mono', monospace;
   color: var(--chalk-dim);
-  width: 16px;
+  width: 22px;
   display: inline-block;
 }
 .clinch-tag {
-  font-size: 9px;
+  font-size: 11px;
   color: var(--amber);
   border: 1px solid var(--amber-dim);
   border-radius: 4px;
@@ -351,7 +378,7 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
   padding: 12px 14px;
   color: var(--chalk);
   font-family: 'Noto Sans JP', sans-serif;
-  font-size: 15px;
+  font-size: 17px;
   outline: none;
 }
 .search-input::placeholder { color: var(--chalk-dim); }
@@ -366,9 +393,9 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
 }
 .team-map { width: 100%; height: auto; display: block; }
 .map-outline {
-  fill: rgba(255, 255, 255, 0.03);
-  stroke: var(--line);
-  stroke-width: 2;
+  fill: var(--bg-panel-2);
+  stroke: var(--chalk-dim);
+  stroke-width: 1.5;
   stroke-linejoin: round;
 }
 .team-dot-map { cursor: pointer; }
@@ -392,17 +419,18 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
   align-items: center;
   gap: 10px;
   width: 100%;
-  background: none;
-  border: none;
+  min-height: 52px;
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
   border-radius: var(--radius-md);
   padding: 10px 8px;
   color: inherit;
   font-family: 'Noto Sans JP', sans-serif;
-  font-size: 14px;
+  font-size: 16px;
   text-align: left;
   cursor: pointer;
 }
-.team-search-row:active { background: rgba(255, 255, 255, 0.03); }
+.team-search-row:active { background: var(--press); }
 .team-row-name {
   flex: 1;
   min-width: 0;
@@ -412,10 +440,10 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
 }
 .team-row-short {
   font-family: 'Roboto Mono', monospace;
-  font-size: 11px;
+  font-size: 13px;
   color: var(--chalk-dim);
 }
-.fav-star-mini { color: var(--amber); font-size: 13px; }
+.fav-star-mini { color: var(--amber); font-size: 15px; }
 
 /* ---- 選手検索 ---- */
 .player-search-row {
@@ -423,21 +451,22 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
   align-items: center;
   gap: 10px;
   width: 100%;
-  background: none;
-  border: none;
+  min-height: 52px;
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
   border-radius: var(--radius-md);
   padding: 10px 8px;
   color: inherit;
   font-family: 'Noto Sans JP', sans-serif;
-  font-size: 14px;
+  font-size: 16px;
   text-align: left;
   cursor: pointer;
 }
-.player-search-row:active { background: rgba(255, 255, 255, 0.03); }
+.player-search-row:active { background: var(--press); }
 .player-row-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .player-row-meta {
   font-family: 'Roboto Mono', monospace;
-  font-size: 11px;
+  font-size: 13px;
   color: var(--chalk-dim);
   flex-shrink: 0;
 }
@@ -445,7 +474,7 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
   text-align: center;
   padding: 10px 16px 4px;
   color: var(--chalk-dim);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 /* ---- チームシート：お気に入り・順位サマリー ---- */
@@ -458,8 +487,8 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
   background: var(--bg-panel-2);
   border: none;
   color: var(--chalk-dim);
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   cursor: pointer;
   display: flex;
@@ -481,7 +510,7 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
   align-items: center;
   margin-bottom: 10px;
   font-family: 'Oswald', sans-serif;
-  font-size: 13px;
+  font-size: 15px;
   letter-spacing: 0.04em;
   color: var(--chalk-dim);
 }
@@ -497,13 +526,13 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
 .standing-summary-stats .stat-num {
   display: block;
   font-family: 'Roboto Mono', monospace;
-  font-size: 17px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--chalk);
 }
 .standing-summary-stats .stat-label {
   display: block;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--chalk-dim);
   margin-top: 2px;
 }
@@ -520,11 +549,11 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
   padding: 12px 14px;
 }
 .notify-toggle-label {
-  font-size: 14px;
+  font-size: 16px;
   color: var(--chalk);
 }
 .notify-toggle-sub {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--chalk-dim);
   margin-top: 3px;
 }
@@ -551,7 +580,7 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
   background: var(--chalk);
   transition: transform 0.15s ease;
 }
-.toggle-switch.on .toggle-knob { transform: translateX(20px); background: var(--bg-night); }
+.toggle-switch.on .toggle-knob { transform: translateX(20px); background: var(--on-accent); }
 .toggle-switch:disabled { opacity: 0.6; cursor: default; }
 
 /* ---- ルール解説 ---- */
@@ -570,14 +599,14 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
 }
 .rule-term {
   font-family: 'Oswald', sans-serif;
-  font-size: 13px;
+  font-size: 15px;
   letter-spacing: 0.04em;
   color: var(--amber-soft);
   margin-bottom: 6px;
 }
 .rule-text {
-  font-size: 13px;
-  color: var(--chalk-dim);
+  font-size: 15px;
+  color: var(--chalk);
   line-height: 1.6;
 }
 
@@ -587,15 +616,15 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   padding: 12px 14px;
-  font-size: 13px;
-  color: var(--chalk-dim);
+  font-size: 15px;
+  color: var(--chalk);
   line-height: 1.6;
 }
 .trivia-tag {
   display: block;
   width: fit-content;
   font-family: 'Oswald', sans-serif;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.06em;
   color: var(--amber-soft);
   border: 1px solid var(--amber-dim);
@@ -624,7 +653,7 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
   width: 100%;
   max-width: 480px;
   display: flex;
-  background: rgba(18, 27, 46, 0.94);
+  background: color-mix(in srgb, var(--bg-panel) 94%, transparent);
   backdrop-filter: blur(10px);
   border-top: 1px solid var(--line);
   padding-bottom: var(--safe-bottom);
@@ -636,8 +665,9 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
   border: none;
   color: var(--chalk-dim);
   font-family: 'Noto Sans JP', sans-serif;
-  font-size: 11px;
-  padding: 10px 4px 8px;
+  font-size: 13px;
+  min-height: 56px;
+  padding: 8px 4px 6px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -675,7 +705,7 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
 }
 .sheet-header h2 {
   font-family: 'Oswald', sans-serif;
-  font-size: 18px;
+  font-size: 20px;
   margin: 0;
   display: flex;
   align-items: center;
@@ -685,11 +715,11 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
   background: var(--bg-panel-2);
   border: none;
   color: var(--chalk);
-  width: 30px;
-  height: 30px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 17px;
 }
 
 /* ---- チーム日程シート：月カレンダー ---- */
@@ -700,20 +730,20 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
   margin-bottom: 10px;
 }
 .calendar-nav-btn {
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: 1px solid var(--line);
   background: var(--bg-panel-2);
   color: var(--chalk);
-  font-size: 16px;
+  font-size: 17px;
   cursor: pointer;
   flex-shrink: 0;
 }
-.calendar-nav-btn:active { background: rgba(255,255,255,0.06); }
+.calendar-nav-btn:active { background: var(--press); }
 .calendar-month-label {
   font-family: 'Oswald', sans-serif;
-  font-size: 15px;
+  font-size: 17px;
   letter-spacing: 0.04em;
   color: var(--chalk);
 }
@@ -726,12 +756,12 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
 .calendar-weekday {
   text-align: center;
   font-family: 'Roboto Mono', monospace;
-  font-size: 10.5px;
+  font-size: 12px;
   color: var(--chalk-dim);
   padding-bottom: 4px;
 }
 .calendar-cell {
-  min-height: 58px;
+  min-height: 72px;
   background: var(--bg-panel);
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -744,7 +774,7 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
 .calendar-cell.today { border-color: var(--amber); }
 .calendar-day-num {
   font-family: 'Roboto Mono', monospace;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--chalk-dim);
   padding: 1px 2px 0;
 }
@@ -772,7 +802,7 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
   display: flex;
   align-items: center;
   gap: 3px;
-  font-size: 9px;
+  font-size: 11px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -781,7 +811,7 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
 }
 .calendar-chip-result {
   font-family: 'Roboto Mono', monospace;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
 }
 .calendar-game-chip.win .calendar-chip-result { color: var(--win); }
@@ -791,7 +821,7 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
 .calendar-game-chip.scheduled .calendar-chip-result { color: var(--amber-soft); }
 
 .calendar-legend {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--chalk-dim);
   margin-top: 8px;
 }
@@ -805,7 +835,7 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
 }
 .game-sheet-date {
   font-family: 'Roboto Mono', monospace;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--chalk-dim);
   margin: 8px 0 2px;
 }
@@ -813,7 +843,7 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 11px;
+  font-size: 13px;
   color: var(--chalk-dim);
   text-decoration: none;
   margin-bottom: 10px;
@@ -839,7 +869,7 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
 }
 table.linescore-table {
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: 14px;
   width: 100%;
 }
 table.linescore-table th, table.linescore-table td {
@@ -851,7 +881,7 @@ table.linescore-table th, table.linescore-table td {
 }
 table.linescore-table thead th {
   color: var(--chalk-dim);
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 500;
   border-bottom: 1px solid var(--line);
 }
@@ -878,19 +908,19 @@ table.linescore-table tr:last-child td { border-bottom: none; }
   border-radius: var(--radius-md);
 }
 .result-row {
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.7;
 }
 .result-row + .result-row { margin-top: 2px; }
 .result-tag {
   display: inline-block;
   font-family: 'Oswald', sans-serif;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   padding: 1px 6px;
   border-radius: 4px;
   margin-right: 6px;
-  color: var(--bg-night);
+  color: var(--on-accent);
 }
 .result-tag.win { background: var(--win); }
 .result-tag.loss { background: var(--loss); }
@@ -901,7 +931,7 @@ table.linescore-table tr:last-child td { border-bottom: none; }
   align-items: center;
   gap: 4px;
   margin-top: 8px;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--amber-soft);
   text-decoration: none;
 }
@@ -912,7 +942,7 @@ table.linescore-table tr:last-child td { border-bottom: none; }
   align-items: center;
   gap: 8px;
   font-family: 'Oswald', sans-serif;
-  font-size: 14px;
+  font-size: 16px;
   letter-spacing: 0.03em;
   font-weight: 600;
   color: var(--chalk);
@@ -920,7 +950,7 @@ table.linescore-table tr:last-child td { border-bottom: none; }
   border-bottom: 1px solid var(--line);
 }
 .section-subtitle {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--chalk-dim);
   margin-top: 10px;
   margin-bottom: 6px;
@@ -932,7 +962,7 @@ table.linescore-table tr:last-child td { border-bottom: none; }
   padding: 10px 12px;
 }
 .box-player-row + .box-player-row { margin-top: 8px; }
-.box-player-name { font-size: 14px; font-weight: 500; }
+.box-player-name { font-size: 16px; font-weight: 500; }
 
 .pbp-list {
   display: flex;
@@ -941,7 +971,7 @@ table.linescore-table tr:last-child td { border-bottom: none; }
 }
 .pbp-inning-header {
   font-family: 'Oswald', sans-serif;
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 0.05em;
   color: var(--amber-soft);
   margin-top: 10px;
@@ -963,7 +993,7 @@ table.linescore-table tr:last-child td { border-bottom: none; }
 }
 .pbp-bases { flex-shrink: 0; }
 .pbp-count {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--chalk-dim);
 }
 .pbp-play-top {
@@ -972,28 +1002,28 @@ table.linescore-table tr:last-child td { border-bottom: none; }
   align-items: baseline;
   gap: 8px;
 }
-.pbp-batter { font-size: 14px; font-weight: 500; }
+.pbp-batter { font-size: 16px; font-weight: 500; }
 .pbp-event {
   font-family: 'Oswald', sans-serif;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--amber-soft);
   flex-shrink: 0;
 }
 .pbp-play-desc {
-  font-size: 12px;
-  color: var(--chalk-dim);
+  font-size: 14px;
+  color: var(--chalk);
   margin-top: 4px;
   line-height: 1.5;
 }
 .pbp-play-pitcher {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--chalk-dim);
   margin-top: 4px;
 }
 
 .today-stat-line {
   font-family: 'Oswald', sans-serif;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--amber-soft);
   margin-top: 2px;
 }
@@ -1005,7 +1035,7 @@ table.linescore-table tr:last-child td { border-bottom: none; }
 }
 .pa-chip {
   font-family: 'Oswald', sans-serif;
-  font-size: 11px;
+  font-size: 13px;
   padding: 3px 8px;
   border-radius: 999px;
   background: var(--bg-panel-2);
@@ -1037,3 +1067,32 @@ table.linescore-table tr:last-child td { border-bottom: none; }
   .nav-btn, .game-card, .collapsible .chevron { transition: none; }
   .spinner { animation-duration: 1.6s; }
 }
+
+/* ---- キーボード／スイッチ操作時のフォーカス表示 ---- */
+:where(button, a, summary, input, [tabindex]):focus-visible {
+  outline: 3px solid var(--amber);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ---- 旧・暗色テーマの値（端末設定に追従させたくなったら、
+       このコメントを外して @media を有効にする） ----
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-night:   #0a1120;
+    --bg-panel:   #121b2e;
+    --bg-panel-2: #16213a;
+    --amber:      #ffb300;
+    --amber-soft: #ffd166;
+    --amber-dim:  #6b5218;
+    --chalk:      #f4f1e8;
+    --chalk-dim:  #98a2b8;
+    --line:       rgba(244, 241, 232, 0.09);
+    --press:      rgba(255, 255, 255, 0.06);
+    --on-accent:  #0a1120;
+    --shadow:     none;
+    --win:  #57c278;
+    --loss: #ef5b52;
+  }
+}
+---- */
