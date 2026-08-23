@@ -449,50 +449,85 @@ function renderInningDetail(inning, halfInning, playByPlay, game) {
   `;
 }
 
-// つまみ（ドラッグハンドル）のドラッグ操作：上へスワイプでフルスクリーン化、下へスワイプで閉じる。
-// 本文のスクロールと干渉しないよう、反応領域はつまみ部分のみに限定する。
-function wireDragHandle(handle, panel, close) {
+// シート全体のスワイプ操作：上へスワイプでフルスクリーン化、下へスワイプで閉じる。
+// つまみだけだと掴みにくいため反応領域はシート全体に広げつつ、一定量動くまでは
+// ドラッグとして確定させない（タップやスクロール操作と衝突しないようにするため）。
+// スクロール領域内で始まった操作は、そこが最上部（scrollTop===0）のときだけドラッグとして扱う。
+function wireDragHandle(panel, close) {
   const UP_THRESHOLD = -40;
   const DOWN_THRESHOLD = 60;
-  let startY = null;
-  let dragging = false;
+  const MOVE_THRESHOLD = 8; // これ未満はタップ・通常スクロールとして扱う
+  const SCROLLABLE_SELECTOR = '#game-sheet-scroll, #inning-detail-panel';
 
-  const endDrag = (e) => {
-    if (!dragging || startY === null) return;
-    const deltaY = e.clientY - startY;
-    dragging = false;
+  let pointerId = null;
+  let startX = null;
+  let startY = null;
+  let startScrollable = null;
+  let dragging = false; // 一定量動いてドラッグとして確定した後のみtrue
+  let blocked = false; // 通常のスクロール・横方向操作と判定済み
+
+  const resetState = () => {
+    pointerId = null;
+    startX = null;
     startY = null;
+    startScrollable = null;
+    dragging = false;
+    blocked = false;
     panel.classList.remove('dragging');
     panel.style.transform = '';
-    if (deltaY <= UP_THRESHOLD) {
-      panel.classList.add('fullscreen');
-    } else if (deltaY >= DOWN_THRESHOLD) {
-      close();
-    }
   };
 
-  handle.addEventListener('pointerdown', (e) => {
+  panel.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    pointerId = e.pointerId;
+    startX = e.clientX;
     startY = e.clientY;
-    dragging = true;
-    panel.classList.add('dragging');
-    try { handle.setPointerCapture(e.pointerId); } catch (err) { /* 一部環境ではポインタが無効な場合がある */ }
+    startScrollable = e.target.closest(SCROLLABLE_SELECTOR);
+    dragging = false;
+    blocked = false;
   });
-  handle.addEventListener('pointermove', (e) => {
-    if (!dragging || startY === null) return;
+
+  panel.addEventListener('pointermove', (e) => {
+    if (pointerId === null || e.pointerId !== pointerId || blocked) return;
     const deltaY = e.clientY - startY;
+
+    if (!dragging) {
+      if (Math.abs(deltaY) < MOVE_THRESHOLD) return;
+      const deltaX = e.clientX - startX;
+      if (Math.abs(deltaX) > Math.abs(deltaY)) { blocked = true; return; }
+      if (startScrollable && startScrollable.scrollTop > 0) { blocked = true; return; }
+      dragging = true;
+      panel.classList.add('dragging');
+      try { panel.setPointerCapture(pointerId); } catch (err) { /* 一部環境ではポインタが無効な場合がある */ }
+    }
+
     panel.style.transform = `translateY(${Math.max(-60, Math.min(90, deltaY))}px)`;
+    e.preventDefault();
   });
-  handle.addEventListener('pointerup', endDrag);
-  handle.addEventListener('pointercancel', endDrag);
+
+  const endDrag = (e) => {
+    if (dragging && startY !== null) {
+      const deltaY = e.clientY - startY;
+      if (deltaY <= UP_THRESHOLD) {
+        panel.classList.add('fullscreen');
+      } else if (deltaY >= DOWN_THRESHOLD) {
+        close();
+        return;
+      }
+    }
+    resetState();
+  };
+
+  panel.addEventListener('pointerup', endDrag);
+  panel.addEventListener('pointercancel', endDrag);
 }
 
 // スコアボードのイニング欄タップで、その回だけの打席結果をスコアボード直下に展開する。
-// 打撃結果の表示中はヒント文と勝敗投手・セーブ・本塁打サマリーを隠し、表示スペースを確保する。
-function wireInningTaps(fixedRoot, scrollRoot, playByPlay, game) {
+// 打撃結果の表示中はヒント文と結果サマリー・出場選手成績（scrollRoot）を隠し、
+// イニング詳細パネル（panel）を残りの縦スペースいっぱいに広げる。
+function wireInningTaps(fixedRoot, scrollRoot, panel, playByPlay, game) {
   let activeKey = null;
-  const panel = fixedRoot.querySelector('#inning-detail-panel');
   const hint = fixedRoot.querySelector('#inning-tap-hint');
-  const summaryWrap = scrollRoot.querySelector('#game-result-summary-wrap');
   if (!panel) return;
 
   const clearActive = () => {
@@ -502,8 +537,8 @@ function wireInningTaps(fixedRoot, scrollRoot, playByPlay, game) {
     activeKey = null;
     clearActive();
     panel.innerHTML = '';
+    scrollRoot.style.display = '';
     if (hint) hint.style.display = '';
-    if (summaryWrap) summaryWrap.style.display = '';
   };
 
   fixedRoot.querySelectorAll('.inning-cell[data-inning]').forEach((cell) => {
@@ -519,8 +554,8 @@ function wireInningTaps(fixedRoot, scrollRoot, playByPlay, game) {
       clearActive();
       cell.classList.add('active');
       panel.innerHTML = renderInningDetail(inning, half, playByPlay, game);
+      scrollRoot.style.display = 'none';
       if (hint) hint.style.display = 'none';
-      if (summaryWrap) summaryWrap.style.display = 'none';
       const closeBtn = panel.querySelector('#inning-detail-close');
       if (closeBtn) closeBtn.onclick = closePanel;
     };
@@ -539,6 +574,7 @@ export async function openGameSheet(gamePk) {
         </div>
         <div id="game-sheet-fixed"><div class="spinner"></div></div>
         <div id="game-sheet-scroll"></div>
+        <div id="inning-detail-panel"></div>
       </div>
     </div>
   `;
@@ -547,7 +583,7 @@ export async function openGameSheet(gamePk) {
   document.getElementById('sheet-backdrop').onclick = (e) => {
     if (e.target.id === 'sheet-backdrop') close();
   };
-  wireDragHandle(document.getElementById('game-sheet-handle'), document.getElementById('game-sheet-panel'), close);
+  wireDragHandle(document.getElementById('game-sheet-panel'), close);
 
   try {
     const { game } = await getGameSummary(gamePk);
@@ -588,8 +624,7 @@ export async function openGameSheet(gamePk) {
     if (!fixedNow || !scrollNow) return;
 
     fixedNow.innerHTML = headerHtml + renderLinescore(linescoreRes.data, game)
-      + `<div class="inning-tap-hint" id="inning-tap-hint">スコアボードをタッチすると、その回の打撃が見られます。</div>`
-      + `<div id="inning-detail-panel" class="inning-detail-panel"></div>`;
+      + `<div class="inning-tap-hint" id="inning-tap-hint">スコアボードをタッチすると、その回の打撃が見られます。</div>`;
     scrollNow.innerHTML = `<div id="game-result-summary-wrap">${renderResultSummary(game, playByPlayRes.data)}</div>`
       + renderBoxscoreDetail(boxscoreRes.data, playByPlayRes.data, game);
 
@@ -605,7 +640,8 @@ export async function openGameSheet(gamePk) {
       };
     }
 
-    wireInningTaps(fixedNow, scrollNow, playByPlayRes.data, game);
+    const panelNow = document.getElementById('inning-detail-panel');
+    wireInningTaps(fixedNow, scrollNow, panelNow, playByPlayRes.data, game);
   } catch (e) {
     const fixed = document.getElementById('game-sheet-fixed');
     if (fixed) fixed.innerHTML = `<div class="empty-state">試合詳細を取得できませんでした。</div>`;

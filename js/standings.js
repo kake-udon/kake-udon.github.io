@@ -55,9 +55,9 @@ const TEAM_POSITIONS = {
 
 // 絞り込みパネルの「地区」選択肢（表示順：西・中・東）。ア・ナ両リーグの同名地区をまとめて扱う。
 const DIVISION_FILTER_OPTIONS = [
-  { key: 'west', label: '西', divisionIds: [200, 203] },
-  { key: 'central', label: '中', divisionIds: [202, 205] },
-  { key: 'east', label: '東', divisionIds: [201, 204] },
+  { key: 'west', label: '西地区', divisionIds: [200, 203] },
+  { key: 'central', label: '中地区', divisionIds: [202, 205] },
+  { key: 'east', label: '東地区', divisionIds: [201, 204] },
 ];
 
 async function loadFavorites() {

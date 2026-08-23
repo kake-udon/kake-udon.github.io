@@ -756,12 +756,16 @@ table.standings-table tbody tr:active { background: var(--press); }
   padding: 0 18px;
   flex-shrink: 0;
 }
-#game-sheet-scroll {
+/* 通常時は #game-sheet-scroll が、イニング詳細表示中は #inning-detail-panel が
+   残りの縦スペースいっぱいに広がる（互いに片方は空＝非表示になるため同時に伸びることはない） */
+#game-sheet-scroll,
+#inning-detail-panel {
   flex: 1 1 auto;
   overflow-y: auto;
   min-height: 0;
   padding: 0 18px calc(20px + var(--safe-bottom));
 }
+#inning-detail-panel:empty { display: none; }
 
 .inning-tap-hint {
   text-align: center;
@@ -771,14 +775,6 @@ table.standings-table tbody tr:active { background: var(--press); }
 }
 .inning-cell { cursor: pointer; }
 .inning-cell.active { background: rgba(255, 179, 0, 0.16); color: var(--amber-soft); font-weight: 700; }
-.inning-detail-panel:empty { display: none; }
-.inning-detail-panel {
-  margin-top: 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  padding: 10px;
-  background: var(--bg-panel-2);
-}
 .inning-detail-head {
   display: flex;
   align-items: center;
@@ -787,7 +783,10 @@ table.standings-table tbody tr:active { background: var(--press); }
   font-size: 13px;
   letter-spacing: 0.03em;
   color: var(--chalk-dim);
+  padding-top: 4px;
+  padding-bottom: 8px;
   margin-bottom: 8px;
+  border-bottom: 1px solid var(--line);
 }
 .inning-detail-close {
   background: none;
@@ -798,7 +797,6 @@ table.standings-table tbody tr:active { background: var(--press); }
   cursor: pointer;
   padding: 2px 6px;
 }
-.inning-detail-list { max-height: 240px; overflow-y: auto; }
 .sheet-header {
   display: flex;
   align-items: center;
