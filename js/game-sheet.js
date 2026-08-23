@@ -247,8 +247,9 @@ function renderLinescore(linescore, game) {
   const totals = linescore.teams || {};
 
   const inningHeaders = innings.map((inn) => `<th>${inn.num}</th>`).join('');
-  const awayCells = innings.map((inn) => `<td>${inn.away ? (inn.away.runs ?? '-') : '-'}</td>`).join('');
-  const homeCells = innings.map((inn) => `<td>${inn.home ? (inn.home.runs ?? '-') : '-'}</td>`).join('');
+  // 実際にそのイニングの打撃が行われたマス（値が入っているマス）だけタップ対象にする
+  const awayCells = innings.map((inn) => `<td class="${inn.away ? 'inning-cell' : ''}" ${inn.away ? `data-inning="${inn.num}" data-half="top"` : ''}>${inn.away ? (inn.away.runs ?? '-') : '-'}</td>`).join('');
+  const homeCells = innings.map((inn) => `<td class="${inn.home ? 'inning-cell' : ''}" ${inn.home ? `data-inning="${inn.num}" data-half="bottom"` : ''}>${inn.home ? (inn.home.runs ?? '-') : '-'}</td>`).join('');
 
   return `
     <div class="linescore-scroll">
@@ -402,56 +403,128 @@ function renderBoxscoreDetail(boxscore, playByPlay, game) {
   `;
 }
 
-function renderPlayByPlay(playByPlay, game) {
+// 打席1つ分の行（打席ごとの結果一覧・イニング詳細パネルの両方で共用）
+function renderSinglePlay(play, stateBefore) {
+  const batter = play.matchup && play.matchup.batter ? play.matchup.batter.fullName : '';
+  const pitcher = play.matchup && play.matchup.pitcher ? play.matchup.pitcher.fullName : '';
+  const eventJa = translateEvent(play.result.event);
+  const before = stateBefore.get(play) || { first: false, second: false, third: false, outs: 0 };
+  const count = play.count ? `${play.count.balls ?? 0}-${play.count.strikes ?? 0}` : '';
+  return `
+    <div class="pbp-play ${play.about.isScoringPlay ? 'scoring' : ''}">
+      <div class="pbp-play-state">
+        ${baseStateIcon(before)}
+        <span class="pbp-count">${count}${count ? '、' : ''}${outsJa(before.outs)}</span>
+      </div>
+      <div class="pbp-play-top">
+        <span class="pbp-batter">${batter}</span>
+        <span class="pbp-event">${eventJa}</span>
+      </div>
+      <div class="pbp-play-desc">${translateDescription(play)}</div>
+      <div class="pbp-play-pitcher">投手: ${pitcher}</div>
+    </div>
+  `;
+}
+
+// スコアボードのイニング欄タップ時に、その回だけの打席結果を組み立てる
+function renderInningDetail(inning, halfInning, playByPlay, game) {
   const allPlays = playByPlay.allPlays || [];
   const stateBefore = computeStateBefore(allPlays);
-  const plays = allPlays.filter((p) => p.result && p.result.type === 'atBat');
-  if (!plays.length) return '';
+  const plays = allPlays.filter((p) => p.result && p.result.type === 'atBat'
+    && p.about.inning === inning && p.about.halfInning === halfInning);
 
-  const awayId = game.teams.away.team.id;
-  const homeId = game.teams.home.team.id;
-
-  let lastHalf = null;
-  const rows = plays.map((play) => {
-    const half = `${play.about.inning}-${play.about.halfInning}`;
-    let inningHeader = '';
-    if (half !== lastHalf) {
-      lastHalf = half;
-      const halfLabel = play.about.halfInning === 'top' ? '表' : '裏';
-      const battingTeam = teamName(play.about.isTopInning ? awayId : homeId);
-      inningHeader = `<div class="pbp-inning-header">${play.about.inning}回${halfLabel}　${battingTeam}の打撃</div>`;
-    }
-    const batter = play.matchup && play.matchup.batter ? play.matchup.batter.fullName : '';
-    const pitcher = play.matchup && play.matchup.pitcher ? play.matchup.pitcher.fullName : '';
-    const eventJa = translateEvent(play.result.event);
-    const before = stateBefore.get(play) || { first: false, second: false, third: false, outs: 0 };
-    const count = play.count ? `${play.count.balls ?? 0}-${play.count.strikes ?? 0}` : '';
-    return `
-      ${inningHeader}
-      <div class="pbp-play ${play.about.isScoringPlay ? 'scoring' : ''}">
-        <div class="pbp-play-state">
-          ${baseStateIcon(before)}
-          <span class="pbp-count">${count}${count ? '、' : ''}${outsJa(before.outs)}</span>
-        </div>
-        <div class="pbp-play-top">
-          <span class="pbp-batter">${batter}</span>
-          <span class="pbp-event">${eventJa}</span>
-        </div>
-        <div class="pbp-play-desc">${translateDescription(play)}</div>
-        <div class="pbp-play-pitcher">投手: ${pitcher}</div>
-      </div>
-    `;
-  }).join('');
+  const halfLabel = halfInning === 'top' ? '表' : '裏';
+  const isTop = halfInning === 'top';
+  const battingTeam = teamName(isTop ? game.teams.away.team.id : game.teams.home.team.id);
+  const rows = plays.length
+    ? plays.map((play) => renderSinglePlay(play, stateBefore)).join('')
+    : `<div class="empty-state" style="margin:0;">この回の打席データがありません。</div>`;
 
   return `
-    <details class="collapsible" id="pbp-collapsible" style="margin-top:18px;">
-      <summary>
-        <span class="section-title" style="margin:0;">打席ごとの結果 <span class="count">${plays.length}打席</span></span>
-        <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
-      </summary>
-      <div class="pbp-list" style="margin-top:10px;">${rows}</div>
-    </details>
+    <div class="inning-detail-head">
+      <span>${inning}回${halfLabel}　${battingTeam}の打撃</span>
+      <button class="inning-detail-close" id="inning-detail-close" aria-label="閉じる">×</button>
+    </div>
+    <div class="inning-detail-list">${rows}</div>
   `;
+}
+
+// つまみ（ドラッグハンドル）のドラッグ操作：上へスワイプでフルスクリーン化、下へスワイプで閉じる。
+// 本文のスクロールと干渉しないよう、反応領域はつまみ部分のみに限定する。
+function wireDragHandle(handle, panel, close) {
+  const UP_THRESHOLD = -40;
+  const DOWN_THRESHOLD = 60;
+  let startY = null;
+  let dragging = false;
+
+  const endDrag = (e) => {
+    if (!dragging || startY === null) return;
+    const deltaY = e.clientY - startY;
+    dragging = false;
+    startY = null;
+    panel.classList.remove('dragging');
+    panel.style.transform = '';
+    if (deltaY <= UP_THRESHOLD) {
+      panel.classList.add('fullscreen');
+    } else if (deltaY >= DOWN_THRESHOLD) {
+      close();
+    }
+  };
+
+  handle.addEventListener('pointerdown', (e) => {
+    startY = e.clientY;
+    dragging = true;
+    panel.classList.add('dragging');
+    try { handle.setPointerCapture(e.pointerId); } catch (err) { /* 一部環境ではポインタが無効な場合がある */ }
+  });
+  handle.addEventListener('pointermove', (e) => {
+    if (!dragging || startY === null) return;
+    const deltaY = e.clientY - startY;
+    panel.style.transform = `translateY(${Math.max(-60, Math.min(90, deltaY))}px)`;
+  });
+  handle.addEventListener('pointerup', endDrag);
+  handle.addEventListener('pointercancel', endDrag);
+}
+
+// スコアボードのイニング欄タップで、その回だけの打席結果をスコアボード直下に展開する。
+// 打撃結果の表示中はヒント文と勝敗投手・セーブ・本塁打サマリーを隠し、表示スペースを確保する。
+function wireInningTaps(fixedRoot, scrollRoot, playByPlay, game) {
+  let activeKey = null;
+  const panel = fixedRoot.querySelector('#inning-detail-panel');
+  const hint = fixedRoot.querySelector('#inning-tap-hint');
+  const summaryWrap = scrollRoot.querySelector('#game-result-summary-wrap');
+  if (!panel) return;
+
+  const clearActive = () => {
+    fixedRoot.querySelectorAll('.inning-cell.active').forEach((el) => el.classList.remove('active'));
+  };
+  const closePanel = () => {
+    activeKey = null;
+    clearActive();
+    panel.innerHTML = '';
+    if (hint) hint.style.display = '';
+    if (summaryWrap) summaryWrap.style.display = '';
+  };
+
+  fixedRoot.querySelectorAll('.inning-cell[data-inning]').forEach((cell) => {
+    cell.onclick = () => {
+      const inning = Number(cell.dataset.inning);
+      const half = cell.dataset.half;
+      const key = `${inning}-${half}`;
+      if (activeKey === key) {
+        closePanel();
+        return;
+      }
+      activeKey = key;
+      clearActive();
+      cell.classList.add('active');
+      panel.innerHTML = renderInningDetail(inning, half, playByPlay, game);
+      if (hint) hint.style.display = 'none';
+      if (summaryWrap) summaryWrap.style.display = 'none';
+      const closeBtn = panel.querySelector('#inning-detail-close');
+      if (closeBtn) closeBtn.onclick = closePanel;
+    };
+  });
 }
 
 export async function openGameSheet(gamePk) {
@@ -459,38 +532,37 @@ export async function openGameSheet(gamePk) {
 
   root.innerHTML = `
     <div class="sheet-backdrop" id="sheet-backdrop">
-      <div class="sheet">
+      <div class="sheet game-sheet" id="game-sheet-panel">
+        <div class="sheet-drag-handle" id="game-sheet-handle"><span class="handle-bar"></span></div>
         <div class="sheet-header">
           <h2>試合詳細</h2>
-          <div class="sheet-header-actions">
-            <button class="sheet-close" id="sheet-close">×</button>
-          </div>
         </div>
-        <div id="game-sheet-body"><div class="spinner"></div></div>
+        <div id="game-sheet-fixed"><div class="spinner"></div></div>
+        <div id="game-sheet-scroll"></div>
       </div>
     </div>
   `;
 
   const close = () => closeSheet(root);
-  document.getElementById('sheet-close').onclick = close;
   document.getElementById('sheet-backdrop').onclick = (e) => {
     if (e.target.id === 'sheet-backdrop') close();
   };
+  wireDragHandle(document.getElementById('game-sheet-handle'), document.getElementById('game-sheet-panel'), close);
 
   try {
     const { game } = await getGameSummary(gamePk);
     if (!game) throw new Error('試合情報が見つかりませんでした');
 
-    const body = document.getElementById('game-sheet-body');
-    if (!body) return; // シートが既に閉じられている場合
+    const fixed = document.getElementById('game-sheet-fixed');
+    if (!fixed) return; // シートが既に閉じられている場合
 
     const started = game.status.abstractGameState !== 'Preview';
-    let html = renderHeader(game);
+    const headerHtml = renderHeader(game);
 
     if (!started) {
       const awayProbable = game.teams.away.probablePitcher;
       const homeProbable = game.teams.home.probablePitcher;
-      html += `
+      fixed.innerHTML = headerHtml + `
         <div class="empty-state" style="margin-top:14px;">
           この試合はまだ始まっていません。${awayProbable || homeProbable ? '<br>予告先発：' : ''}
           ${awayProbable ? `${teamShort(game.teams.away.team.id)} ${awayProbable.fullName}` : ''}
@@ -498,11 +570,12 @@ export async function openGameSheet(gamePk) {
           ${homeProbable ? `${teamShort(game.teams.home.team.id)} ${homeProbable.fullName}` : ''}
         </div>
       `;
-      body.innerHTML = html;
       return;
     }
 
-    body.innerHTML = html + `<div class="spinner"></div>`;
+    fixed.innerHTML = headerHtml;
+    const scroll = document.getElementById('game-sheet-scroll');
+    if (scroll) scroll.innerHTML = `<div class="spinner"></div>`;
 
     const [linescoreRes, playByPlayRes, boxscoreRes] = await Promise.all([
       getGameLinescore(gamePk),
@@ -510,28 +583,33 @@ export async function openGameSheet(gamePk) {
       getGameBoxscore(gamePk),
     ]);
 
-    const bodyNow = document.getElementById('game-sheet-body');
-    if (!bodyNow) return;
+    const fixedNow = document.getElementById('game-sheet-fixed');
+    const scrollNow = document.getElementById('game-sheet-scroll');
+    if (!fixedNow || !scrollNow) return;
 
-    html += renderLinescore(linescoreRes.data, game);
-    html += renderResultSummary(game, playByPlayRes.data);
-    html += renderBoxscoreDetail(boxscoreRes.data, playByPlayRes.data, game);
-    html += renderPlayByPlay(playByPlayRes.data, game);
-    bodyNow.innerHTML = html;
+    fixedNow.innerHTML = headerHtml + renderLinescore(linescoreRes.data, game)
+      + `<div class="inning-tap-hint" id="inning-tap-hint">スコアボードをタッチすると、その回の打撃が見られます。</div>`
+      + `<div id="inning-detail-panel" class="inning-detail-panel"></div>`;
+    scrollNow.innerHTML = `<div id="game-result-summary-wrap">${renderResultSummary(game, playByPlayRes.data)}</div>`
+      + renderBoxscoreDetail(boxscoreRes.data, playByPlayRes.data, game);
 
-    const jumpLink = bodyNow.querySelector('#boxscore-jump-link');
+    const jumpLink = scrollNow.querySelector('#boxscore-jump-link');
     if (jumpLink) {
       jumpLink.onclick = (e) => {
         e.preventDefault();
-        const section = bodyNow.querySelector('#boxscore-section');
+        const section = scrollNow.querySelector('#boxscore-section');
         if (section) {
           section.style.display = 'block';
           section.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       };
     }
+
+    wireInningTaps(fixedNow, scrollNow, playByPlayRes.data, game);
   } catch (e) {
-    const body = document.getElementById('game-sheet-body');
-    if (body) body.innerHTML = `<div class="empty-state">試合詳細を取得できませんでした。</div>`;
+    const fixed = document.getElementById('game-sheet-fixed');
+    if (fixed) fixed.innerHTML = `<div class="empty-state">試合詳細を取得できませんでした。</div>`;
+    const scroll = document.getElementById('game-sheet-scroll');
+    if (scroll) scroll.innerHTML = '';
   }
 }

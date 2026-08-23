@@ -274,31 +274,6 @@ main {
 }
 
 /* ---- 順位表 ---- */
-.league-tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-.league-tab {
-  flex: 1;
-  font-family: 'Oswald', sans-serif;
-  letter-spacing: 0.05em;
-  font-size: 14px;
-  padding: 10px;
-  text-align: center;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--line);
-  background: var(--bg-panel);
-  color: var(--chalk-dim);
-  cursor: pointer;
-}
-.league-tab.active {
-  color: var(--bg-night);
-  background: var(--amber);
-  border-color: var(--amber);
-  font-weight: 700;
-}
-
 .division-block {
   margin-bottom: 18px;
   background: var(--bg-panel);
@@ -403,10 +378,52 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
   transition: r 0.15s ease, opacity 0.15s ease, stroke 0.15s ease;
 }
 .team-dot-map.is-favorite .dot-core { stroke: var(--amber); stroke-width: 2.5; }
-.team-dot-map.dimmed .dot-core { opacity: 0.2; }
-.team-dot-map.highlighted .dot-core { r: 11; }
 .team-dot-map:focus { outline: none; }
 .team-dot-map:focus .dot-core { stroke: var(--amber-soft); stroke-width: 2.5; }
+.map-empty-state { margin: 8px 4px 2px; }
+
+/* ---- 順位表：球団マップの絞り込み ---- */
+.map-filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.filter-row-label {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 11px;
+  color: var(--chalk-dim);
+  flex-shrink: 0;
+  width: 36px;
+}
+.filter-pill-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.filter-pill {
+  font-family: 'Noto Sans JP', sans-serif;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+  color: var(--chalk-dim);
+  cursor: pointer;
+}
+.filter-pill.active {
+  color: var(--bg-night);
+  background: var(--amber);
+  border-color: var(--amber);
+  font-weight: 700;
+}
+.filter-pill.toggle-pill.active { color: var(--amber-soft); background: rgba(255, 179, 0, 0.14); border-color: var(--amber-dim); }
 
 .team-search-list {
   display: flex;
@@ -694,6 +711,86 @@ table.standings-table tr:active { background: rgba(255,255,255,0.03); }
   padding: 18px 18px calc(20px + var(--safe-bottom));
   border-top: 1px solid var(--line);
 }
+
+/* ---- 試合詳細シート：スコアボード固定＋スワイプ操作（上でフルスクリーン、下で閉じる） ---- */
+.sheet.game-sheet {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 4px 0 0;
+  transition: max-height 0.25s ease, height 0.25s ease, border-radius 0.25s ease;
+}
+.sheet.game-sheet.dragging { transition: none; }
+.sheet.game-sheet.fullscreen {
+  max-height: 100dvh;
+  height: 100dvh;
+  border-radius: 0;
+}
+.sheet.game-sheet .sheet-header {
+  padding: 0 18px;
+  flex-shrink: 0;
+}
+.sheet-drag-handle {
+  display: flex;
+  justify-content: center;
+  padding: 6px 0 8px;
+  touch-action: none;
+  cursor: grab;
+  flex-shrink: 0;
+}
+.handle-bar {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+}
+#game-sheet-fixed {
+  padding: 0 18px;
+  flex-shrink: 0;
+}
+#game-sheet-scroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;
+  padding: 0 18px calc(20px + var(--safe-bottom));
+}
+
+.inning-tap-hint {
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--chalk-dim);
+  margin-top: 10px;
+}
+.inning-cell { cursor: pointer; }
+.inning-cell.active { background: rgba(255, 179, 0, 0.16); color: var(--amber-soft); font-weight: 700; }
+.inning-detail-panel:empty { display: none; }
+.inning-detail-panel {
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  background: var(--bg-panel-2);
+}
+.inning-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: 'Oswald', sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.03em;
+  color: var(--chalk-dim);
+  margin-bottom: 8px;
+}
+.inning-detail-close {
+  background: none;
+  border: none;
+  color: var(--chalk-dim);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+.inning-detail-list { max-height: 240px; overflow-y: auto; }
 .sheet-header {
   display: flex;
   align-items: center;
