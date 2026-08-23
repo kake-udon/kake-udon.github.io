@@ -8,6 +8,7 @@ import {
 import { teamName, teamShort, teamColor } from './teams.js';
 import { openGameSheet } from './game-sheet.js';
 import { openPlayerSheet } from './player-sheet.js';
+import { isSupported, getPermissionState, getSubscription, enableNotifications, disableNotifications } from './notifications.js';
 
 const SCHEDULE_LOOKAHEAD_DAYS = 10;
 
@@ -198,9 +199,62 @@ async function loadSection(container, sectionId, loader) {
   }
 }
 
+// 通知設定：対応状況・許可状態に応じてトグルを表示し、有効/無効の切り替えを行う
+async function renderNotificationSection(container, favTeamIds) {
+  const wrap = container.querySelector('#notification-section');
+  if (!wrap) return;
+
+  if (!isSupported()) {
+    wrap.innerHTML = `<div class="empty-state">お使いのブラウザは通知に対応していません。</div>`;
+    return;
+  }
+
+  if (getPermissionState() === 'denied') {
+    wrap.innerHTML = `<div class="empty-state">通知がブラウザでブロックされています。ブラウザの設定から許可してください。</div>`;
+    return;
+  }
+
+  const subscription = await getSubscription();
+  const wrapNow = container.querySelector('#notification-section');
+  if (!wrapNow) return; // 取得中に画面が切り替わった場合
+  const enabled = !!subscription;
+
+  wrapNow.innerHTML = `
+    <div class="notify-toggle-row">
+      <div>
+        <div class="notify-toggle-label">毎日18時に試合結果と次戦予定をお知らせ</div>
+        <div class="notify-toggle-sub" id="notify-toggle-sub">${enabled ? '通知は有効です' : 'お気に入りチームの情報をプッシュ通知で受け取れます'}</div>
+      </div>
+      <button id="notify-toggle-btn" class="toggle-switch ${enabled ? 'on' : ''}" role="switch" aria-checked="${enabled}" aria-label="通知の有効・無効を切り替え">
+        <span class="toggle-knob"></span>
+      </button>
+    </div>
+  `;
+
+  const btn = wrapNow.querySelector('#notify-toggle-btn');
+  btn.onclick = async () => {
+    btn.disabled = true;
+    const subLabel = wrapNow.querySelector('#notify-toggle-sub');
+    try {
+      if (enabled) {
+        await disableNotifications();
+      } else {
+        if (subLabel) subLabel.textContent = '設定中…';
+        await enableNotifications(favTeamIds);
+      }
+      renderNotificationSection(container, favTeamIds);
+    } catch (e) {
+      if (subLabel) subLabel.textContent = e.message || '通知設定の変更に失敗しました';
+      btn.disabled = false;
+    }
+  };
+}
+
 export async function renderAlerts(container) {
   container.innerHTML = `
-    <div class="section-title">お気に入り投手の先発予定</div>
+    <div class="section-title">通知設定</div>
+    <div id="notification-section"><div class="spinner"></div></div>
+    <div class="section-title" style="margin-top:22px;">お気に入り投手の先発予定</div>
     <div id="alerts-pitchers"><div class="spinner"></div></div>
     <div class="section-title" style="margin-top:22px;">お気に入り野手の本塁打</div>
     <div id="alerts-homeruns"><div class="spinner"></div></div>
@@ -211,6 +265,8 @@ export async function renderAlerts(container) {
   const favorites = await getFavorites();
   const favTeamIds = favorites.filter((f) => f.type === 'team').map((f) => f.id);
   const players = await loadFavoritePlayers(favorites);
+
+  renderNotificationSection(container, favTeamIds);
 
   await Promise.all([
     loadSection(container, 'alerts-pitchers', () => loadPitcherStarts(players)),

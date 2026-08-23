@@ -1,9 +1,8 @@
 import { getGamesForJstDate, addDaysToDateString, toJstDateString, formatJstTime, formatJstDateLabel } from './api.js';
-import { teamName, teamColor, TEAMS } from './teams.js';
-import { getFavorites, toggleFavorite } from './db.js';
+import { teamName, teamColor } from './teams.js';
+import { getFavorites } from './db.js';
 import { openGameSheet } from './game-sheet.js';
 import { pickTrivia } from './trivia.js';
-import { isSupported, getPermissionState, getSubscription, enableNotifications, disableNotifications, syncFavoriteTeams } from './notifications.js';
 import { renderTodayStats } from './today-stats.js';
 
 let favoriteTeamIds = new Set();
@@ -84,24 +83,6 @@ function renderGameList(games) {
   return `<div class="scoreboard-list">${sortGamesByFavorite(games).map(renderGameCard).join('')}</div>`;
 }
 
-function renderTeamPicker() {
-  const chips = Object.entries(TEAMS).map(([id, t]) => {
-    const selected = favoriteTeamIds.has(Number(id));
-    return `<div class="team-chip ${selected ? 'selected' : ''}" data-teamid="${id}">
-      <div class="dot" style="background:${t.color}"></div>${t.name}
-    </div>`;
-  }).join('');
-  return `
-    <details class="collapsible" id="team-picker">
-      <summary>
-        <span class="section-title" style="margin:0;">お気に入りチームを選ぶ <span class="count">${favoriteTeamIds.size}</span></span>
-        <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
-      </summary>
-      <div class="team-chip-grid" style="margin-top:10px;">${chips}</div>
-    </details>
-  `;
-}
-
 async function loadFavorites() {
   const favs = await getFavorites();
   favoriteTeamIds = new Set(favs.filter((f) => f.type === 'team').map((f) => f.id));
@@ -111,11 +92,13 @@ export async function renderHome(container) {
   await loadFavorites();
 
   container.innerHTML = `
-    <div class="section-title">お気に入り</div>
-    ${renderTeamPicker()}
-    <div class="section-title">通知設定</div>
-    <div id="notification-section"><div class="spinner"></div></div>
-    <div class="section-title">本日の試合 <span class="count" id="today-count"></span></div>
+    <div class="section-title">豆知識
+      <button id="trivia-refresh" class="trivia-refresh-btn" aria-label="別の豆知識を見る">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.6-6.36"/><path d="M21 4v5h-5"/></svg>
+      </button>
+    </div>
+    <div id="trivia-wrap">${renderTriviaCard()}</div>
+    <div class="section-title" style="margin-top:22px;">本日の試合 <span class="count" id="today-count"></span></div>
     <div id="today-games"><div class="spinner"></div></div>
     <div id="today-stats-section" style="margin-top:22px;"></div>
     <details class="collapsible" style="margin-top:22px;">
@@ -125,18 +108,10 @@ export async function renderHome(container) {
       </summary>
       <div id="yesterday-games" style="margin-top:10px;"><div class="spinner"></div></div>
     </details>
-    <div class="section-title">豆知識
-      <button id="trivia-refresh" class="trivia-refresh-btn" aria-label="別の豆知識を見る">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.6-6.36"/><path d="M21 4v5h-5"/></svg>
-      </button>
-    </div>
-    <div id="trivia-wrap">${renderTriviaCard()}</div>
   `;
 
-  wireTeamPicker(container);
   wireGameCardTaps(container);
   wireTriviaRefresh(container);
-  renderNotificationSection(container);
   renderTodayStats(container.querySelector('#today-stats-section'));
 
   const todayJst = toJstDateString();
@@ -172,77 +147,6 @@ function wireGameCardTaps(container) {
       openGameSheet(Number(btn.dataset.gamepk));
     };
   });
-}
-
-function wireTeamPicker(container) {
-  container.querySelectorAll('.team-chip').forEach((chip) => {
-    chip.onclick = async () => {
-      const id = Number(chip.dataset.teamid);
-      const wasSelected = favoriteTeamIds.has(id);
-      await toggleFavorite({ type: 'team', id, name: teamName(id) });
-      if (wasSelected) favoriteTeamIds.delete(id); else favoriteTeamIds.add(id);
-      chip.classList.toggle('selected');
-      const countEl = container.querySelector('#team-picker .count');
-      if (countEl) countEl.textContent = favoriteTeamIds.size;
-      container.querySelectorAll('.game-card').forEach((card) => {
-        const away = Number(card.dataset.away);
-        const home = Number(card.dataset.home);
-        card.classList.toggle('is-favorite', favoriteTeamIds.has(away) || favoriteTeamIds.has(home));
-      });
-      syncFavoriteTeams(favoriteTeamIds);
-    };
-  });
-}
-
-// 通知設定：対応状況・許可状態に応じてトグルを表示し、有効/無効の切り替えを行う
-async function renderNotificationSection(container) {
-  const wrap = container.querySelector('#notification-section');
-  if (!wrap) return;
-
-  if (!isSupported()) {
-    wrap.innerHTML = `<div class="empty-state">お使いのブラウザは通知に対応していません。</div>`;
-    return;
-  }
-
-  if (getPermissionState() === 'denied') {
-    wrap.innerHTML = `<div class="empty-state">通知がブラウザでブロックされています。ブラウザの設定から許可してください。</div>`;
-    return;
-  }
-
-  const subscription = await getSubscription();
-  const wrapNow = container.querySelector('#notification-section');
-  if (!wrapNow) return; // 取得中に画面が切り替わった場合
-  const enabled = !!subscription;
-
-  wrapNow.innerHTML = `
-    <div class="notify-toggle-row">
-      <div>
-        <div class="notify-toggle-label">毎日18時に試合結果と次戦予定をお知らせ</div>
-        <div class="notify-toggle-sub" id="notify-toggle-sub">${enabled ? '通知は有効です' : 'お気に入りチームの情報をプッシュ通知で受け取れます'}</div>
-      </div>
-      <button id="notify-toggle-btn" class="toggle-switch ${enabled ? 'on' : ''}" role="switch" aria-checked="${enabled}" aria-label="通知の有効・無効を切り替え">
-        <span class="toggle-knob"></span>
-      </button>
-    </div>
-  `;
-
-  const btn = wrapNow.querySelector('#notify-toggle-btn');
-  btn.onclick = async () => {
-    btn.disabled = true;
-    const subLabel = wrapNow.querySelector('#notify-toggle-sub');
-    try {
-      if (enabled) {
-        await disableNotifications();
-      } else {
-        if (subLabel) subLabel.textContent = '設定中…';
-        await enableNotifications(favoriteTeamIds);
-      }
-      renderNotificationSection(container);
-    } catch (e) {
-      if (subLabel) subLabel.textContent = e.message || '通知設定の変更に失敗しました';
-      btn.disabled = false;
-    }
-  };
 }
 
 function renderTriviaCard() {
