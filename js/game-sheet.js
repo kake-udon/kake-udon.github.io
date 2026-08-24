@@ -571,6 +571,7 @@ export async function openGameSheet(gamePk) {
         <div class="sheet-drag-handle" id="game-sheet-handle"><span class="handle-bar"></span></div>
         <div class="sheet-header">
           <h2>試合詳細</h2>
+          <button class="sheet-close" id="sheet-close" aria-label="閉じる">×</button>
         </div>
         <div id="game-sheet-fixed"><div class="spinner"></div></div>
         <div id="game-sheet-scroll"></div>
@@ -580,6 +581,7 @@ export async function openGameSheet(gamePk) {
   `;
 
   const close = () => closeSheet(root);
+  document.getElementById('sheet-close').onclick = close;
   document.getElementById('sheet-backdrop').onclick = (e) => {
     if (e.target.id === 'sheet-backdrop') close();
   };

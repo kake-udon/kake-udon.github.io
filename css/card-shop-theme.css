@@ -1,0 +1,301 @@
+/* =========================================================
+   MLB Watch — カードショップ・テーマ
+   既存の css/style.css を書き換えずに後ろから読み込むだけで、
+   デザイン案（MLBアプリ カードショップ）の見た目に切り替わる。
+
+   index.html の <head> で style.css の直後に追加:
+     <link rel="stylesheet" href="css/style.css" />
+     <link rel="stylesheet" href="css/card-shop-theme.css" />
+
+   HTML・JSの変更は不要。既存クラス名にだけ乗る。
+   ========================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Noto+Serif+JP:wght@600;900&display=swap');
+
+:root {
+  /* 面：クリーム紙 */
+  --bg-night:   #f4ebdc;
+  --bg-panel:   #fffaf0;
+  --bg-panel-2: #e9dcc1;
+
+  /* アクセント：ブラウン＋ゴールド箔 */
+  --amber:      #d9a441;   /* 箔・選択中 */
+  --amber-soft: #7a2f1d;   /* 文字アクセント（クリーム上で約7:1） */
+  --amber-dim:  #d8c6a8;   /* 罫線・淡い面 */
+
+  --chalk:      #3a2a1c;
+  --chalk-dim:  #8a765c;
+
+  --line:       #d8c6a8;
+  --press:      rgba(122, 47, 29, 0.08);
+  --on-accent:  #3a2a1c;
+  --shadow:     0 3px 0 #d8c6a8;
+
+  --win:  #2c8a5c;
+  --loss: #c0392b;
+  --radius-lg: 12px;
+  --radius-md: 10px;
+
+  /* テーマ独自 */
+  --ink-brown: #7a2f1d;
+  --ink-brown-dark: #5a2115;
+  --foil: linear-gradient(120deg, #d9a441, #f6e6bb, #c08a2c, #f2dfae, #d9a441);
+}
+
+/* 見出しはOswaldではなくスラブセリフに差し替える */
+.app-header .eyebrow, .app-header h1, .section-title, .division-header,
+.standing-summary-row, .calendar-month-label, .sheet-header h2,
+.box-team-header, .pbp-inning-header, .rule-term, .trivia-tag,
+.status-pill, .result-tag, .pa-chip, .today-stat-line, .pbp-event {
+  font-family: 'Alfa Slab One', 'Noto Serif JP', serif !important;
+  font-weight: 400 !important;
+  letter-spacing: 0.02em;
+}
+
+/* 紙のドットテクスチャ（既存の空グラデーションを置き換え） */
+.stadium-glow {
+  background:
+    radial-gradient(rgba(122, 47, 29, 0.055) 1px, transparent 1px),
+    var(--bg-night);
+  background-size: 5px 5px, auto;
+}
+
+/* ---- ヘッダー：ブラウン地＋ゴールドの下線 ---- */
+.app-header {
+  background: var(--ink-brown);
+  border-bottom: 5px solid var(--amber);
+  backdrop-filter: none;
+  color: #f7efdd;
+  padding: 14px 18px 12px;
+}
+.app-header .eyebrow { color: #f7efdd; opacity: 0.85; font-size: 13px; }
+.app-header h1 { color: #f7efdd; font-size: 24px; }
+.app-header .jst-clock { color: rgba(247, 239, 221, 0.75); font-size: 13px; }
+.offline-badge {
+  color: #f7efdd;
+  border-color: rgba(247, 239, 221, 0.5);
+  background: rgba(0, 0, 0, 0.12);
+}
+.offline-badge::before { background: var(--amber); }
+
+.section-title {
+  color: var(--chalk);
+  text-transform: none;
+  font-size: 19px;
+  letter-spacing: 0.01em;
+}
+.section-title .count {
+  color: var(--chalk);
+  background: var(--amber);
+  font-size: 12px;
+  padding: 2px 9px;
+  border-radius: 3px;
+}
+
+/* ---- カード：カードスリーブ風の縁と沈み影 ---- */
+.game-card, .trivia-card, .rule-item, .pbp-play, .box-player-row,
+.team-search-row, .player-search-row, .notify-toggle-row,
+.game-result-summary, .team-map-wrap, .division-block, .collapsible summary {
+  border: 1px solid var(--line);
+  box-shadow: 0 3px 0 var(--line);
+  background: var(--bg-panel);
+}
+.game-card { padding: 5px; }
+.game-card .status-row,
+.game-card .matchup-row { padding: 0 11px; }
+.game-card .status-row { padding-top: 9px; }
+.game-card .matchup-row { padding-bottom: 9px; }
+.game-card.is-favorite {
+  border-color: var(--amber);
+  background: linear-gradient(160deg, #fffdf7, #f6ecd8);
+  box-shadow: 0 3px 0 var(--amber);
+}
+
+.status-pill { font-size: 11px; border-radius: 3px; letter-spacing: 0.06em; }
+.status-pill.live { background: var(--loss); color: #fff; }
+.status-pill.final { background: var(--bg-panel-2); color: var(--chalk-dim); }
+.status-pill.scheduled { background: #f0e2c6; color: var(--ink-brown); }
+
+/* チームカラーはドットではなくペナントの帯で見せる */
+.team-dot {
+  width: 7px;
+  height: 19px;
+  border-radius: 2px;
+}
+.score-digit { font-family: 'Alfa Slab One', serif; font-size: 26px; color: var(--ink-brown); }
+.score-digit.dim { color: #a3927a; }
+.team-label.winner { color: var(--chalk); }
+
+.empty-state {
+  border: 2px dashed #c3b399;
+  background: var(--bg-panel-2);
+  color: var(--chalk-dim);
+  border-radius: var(--radius-md);
+}
+
+/* ---- 順位表 ---- */
+.division-header {
+  background: var(--bg-panel-2);
+  color: var(--ink-brown);
+  border-bottom: 1px solid var(--line);
+}
+table.standings-table td, table.standings-table th { border-bottom: 1px dashed var(--line); }
+.rank-num { font-family: 'Alfa Slab One', serif; color: var(--amber); }
+.clinch-tag {
+  background: var(--amber);
+  color: var(--chalk);
+  border: none;
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 3px;
+}
+/* 順位表の行：ポストシーズン区分を左端の色帯で表す（JS側で付与するクラス）
+   .ps-division / .ps-wildcard / .ps-bubble / 無印＝圏外 */
+table.standings-table tbody tr td:first-child { border-left: 6px solid transparent; padding-left: 8px; }
+table.standings-table tbody tr.ps-division td:first-child { border-left-color: var(--amber); }
+table.standings-table tbody tr.ps-wildcard td:first-child { border-left-color: var(--win); }
+table.standings-table tbody tr.ps-bubble  td:first-child { border-left-color: #e8c98a; }
+
+/* ---- 絞り込みチップ ---- */
+.filter-pill {
+  border-radius: 999px;
+  border-color: var(--line);
+  background: var(--bg-panel);
+  color: var(--chalk-dim);
+  font-family: 'Noto Serif JP', serif;
+}
+.filter-pill.active {
+  background: var(--ink-brown);
+  border-color: var(--ink-brown);
+  color: #f7efdd;
+}
+.filter-pill.toggle-pill.active {
+  background: #fff8e8;
+  border-color: var(--amber);
+  color: var(--ink-brown);
+}
+
+/* ---- 球団マップ：スタンプ帳の紙面に ---- */
+.map-outline {
+  fill: #efe3cb;
+  stroke: #c3b399;
+  stroke-width: 1.5;
+}
+.team-dot-map .dot-core { stroke: rgba(58, 42, 28, 0.45); }
+.team-dot-map.is-favorite .dot-core { stroke: var(--loss); stroke-width: 3; }
+
+/* ---- 通知トグル ---- */
+.toggle-switch { width: 54px; height: 30px; background: var(--line); }
+.toggle-switch.on { background: var(--ink-brown); }
+.toggle-switch .toggle-knob {
+  width: 24px; height: 24px; top: 3px; left: 3px;
+  background: #fffdf7;
+  box-shadow: 0 2px 4px rgba(58, 42, 28, 0.3);
+}
+.toggle-switch.on .toggle-knob { transform: translateX(24px); background: #fffdf7; }
+
+/* ---- 豆知識・ルール ---- */
+.trivia-tag {
+  background: var(--ink-brown);
+  color: #f7efdd;
+  border: none;
+  border-radius: 3px;
+}
+.rule-term { color: var(--ink-brown); }
+
+/* ---- ボトムナビ：ブラウン地＋ゴールドの選択バー ---- */
+.bottom-nav {
+  background: var(--ink-brown);
+  border-top: 5px solid var(--amber);
+  backdrop-filter: none;
+}
+.nav-btn {
+  color: rgba(247, 239, 221, 0.55);
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 600;
+  position: relative;
+}
+.nav-btn.active { color: #f7efdd; }
+.nav-btn::before {
+  content: '';
+  width: 22px;
+  height: 5px;
+  border-radius: 2px;
+  background: rgba(247, 239, 221, 0.25);
+}
+.nav-btn.active::before { background: var(--amber); }
+
+/* ---- シート ---- */
+.sheet {
+  background: var(--bg-panel);
+  border-top: 5px solid var(--amber);
+  border-radius: 14px 14px 0 0;
+}
+.handle-bar { background: #c3b399; }
+.sheet-close, .fav-toggle-btn, .calendar-nav-btn {
+  background: var(--bg-panel-2);
+  border: 1px solid var(--line);
+  color: var(--chalk);
+}
+.fav-toggle-btn.active { color: var(--loss); }
+
+/* ---- 試合詳細：スコアブック ---- */
+.game-sheet-header, .standing-summary-card {
+  background: linear-gradient(140deg, #fff8e8, #f0e2c6);
+  border: 1px solid var(--line);
+}
+table.linescore-table th, table.linescore-table td { border-bottom: 1px solid #e2d3b6; }
+.linescore-total { color: var(--ink-brown); font-weight: 700; }
+.inning-cell.active { background: #fff8e8; color: var(--ink-brown); }
+.result-tag { color: #fff; border-radius: 3px; }
+.result-tag.save, .result-tag.hr { background: var(--amber); color: var(--chalk); }
+.pbp-play { border-left: 5px solid var(--line); }
+.pbp-play.scoring { border-left-color: var(--loss); border-color: var(--line); }
+.pbp-event { color: var(--ink-brown); }
+
+/* ---- カレンダー ---- */
+.calendar-cell { background: #fffdf7; border-color: #e2d3b6; border-radius: 6px; }
+.calendar-cell.today { border-color: var(--ink-brown); }
+.calendar-cell.today .calendar-day-num { color: var(--ink-brown); }
+.calendar-game-chip { background: #f7efdd; border-radius: 4px; }
+.calendar-game-chip.win { background: #e4f0e7; }
+.calendar-game-chip.loss { background: #f2ece4; }
+.calendar-game-chip.live { background: #fbe4e0; }
+
+/* ---- 選手カード（任意）：金箔フレームを使いたい要素に .foil-frame を付ける ---- */
+.foil-frame {
+  border-radius: 13px;
+  padding: 8px;
+  background: var(--foil);
+  background-size: 200% 100%;
+  animation: sheen 8s linear infinite;
+  box-shadow: 0 14px 30px rgba(58, 42, 28, 0.24);
+}
+.foil-frame > * {
+  border-radius: 7px;
+  background: linear-gradient(180deg, #fffdf7, #f1e4ca);
+}
+@keyframes sheen {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .foil-frame { animation: none; }
+}
+
+/* ---- 主ボタン（「前日の結果を見る」等に .btn-primary を付ける） ---- */
+.btn-primary {
+  border: none;
+  border-radius: 8px;
+  background: var(--ink-brown);
+  color: #f7efdd;
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 600;
+  font-size: 16px;
+  padding: 12px 22px;
+  min-height: 44px;
+  box-shadow: 0 4px 0 var(--ink-brown-dark);
+  cursor: pointer;
+}
+.btn-primary:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--ink-brown-dark); }

@@ -2,6 +2,7 @@ import { getStandings, currentSeasonYear } from './api.js';
 import { TEAMS, DIVISIONS, teamColor, teamName } from './teams.js';
 import { openTeamSheet } from './team-sheet.js';
 import { getFavorites } from './db.js';
+import { psClass, renderWildcardCard } from './postseason.js';
 
 let cachedRecords = null;
 let teamRecordById = new Map(); // teamId -> teamRecord（絞り込みの判定に使用）
@@ -192,7 +193,7 @@ function clinchTag(team) {
 function renderDivisionTable(records) {
   const sorted = [...records].sort((a, b) => a.divisionRank - b.divisionRank);
   const rows = sorted.map((r) => `
-    <tr data-teamid="${r.team.id}">
+    <tr data-teamid="${r.team.id}" class="${psClass(r)}">
       <td>
         <div class="team-cell">
           <span class="rank-num">${r.divisionRank}</span>
@@ -248,8 +249,13 @@ function renderBody(container) {
     `;
   }).join('');
 
-  body.innerHTML = blocks || `<div class="empty-state">条件に一致するチームがありません。</div>`;
+  body.innerHTML = blocks
+    ? blocks + renderWildcardCard(cachedRecords, 104, 'ナ・リーグ') + renderWildcardCard(cachedRecords, 103, 'ア・リーグ')
+    : `<div class="empty-state">条件に一致するチームがありません。</div>`;
   wireInteractions(container);
+  body.querySelectorAll('.wc-row[data-teamid]').forEach((row) => {
+    row.onclick = () => openTeamSheet(Number(row.dataset.teamid));
+  });
 }
 
 export async function renderStandings(container) {

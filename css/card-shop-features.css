@@ -1,0 +1,170 @@
+/* =========================================================
+   カードショップ・テーマ 追加分：新規機能の見た目
+   （postseason.js / collection.js 用）
+   card-shop-theme.css の後に読み込むか、末尾に連結する。
+   ========================================================= */
+
+/* ---- ⑤ ワイルドカード争い ---- */
+.wc-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  box-shadow: 0 3px 0 var(--line);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  margin-bottom: 18px;
+}
+.wc-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--line);
+  cursor: pointer;
+  min-height: 44px;
+}
+.wc-row.cutline { border-bottom: 2px dashed #c0392b; }
+.wc-row:last-of-type { border-bottom: none; }
+.wc-slot {
+  width: 30px;
+  font-family: 'Alfa Slab One', serif;
+  font-size: 12px;
+  color: #c3b399;
+}
+.wc-row.in .wc-slot { color: var(--win); }
+.wc-abbr { font-family: 'Alfa Slab One', serif; font-size: 13px; width: 42px; }
+.wc-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wc-wl { font-family: 'Roboto Mono', monospace; font-size: 13px; color: var(--chalk-dim); }
+.wc-gb {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: #a3927a;
+  width: 46px;
+  text-align: right;
+}
+.wc-row.in .wc-gb { color: var(--win); }
+.wc-cutline-label {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: #c0392b;
+  padding: 6px 0 2px;
+}
+.wc-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-family: 'Noto Serif JP', serif;
+  font-size: 11px;
+  color: var(--chalk-dim);
+}
+.wc-legend span { display: flex; align-items: center; gap: 5px; }
+.wc-legend i {
+  width: 13px;
+  height: 8px;
+  border-radius: 2px;
+  display: inline-block;
+}
+.wc-legend .lg-division { background: var(--amber); }
+.wc-legend .lg-wildcard { background: var(--win); }
+.wc-legend .lg-bubble   { background: #e8c98a; }
+.wc-legend .lg-out      { background: #c3b399; }
+
+/* ---- ⑨ 推しコレクション ---- */
+.my-team-frame { margin-bottom: 12px; }
+.my-team-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 15px;
+  cursor: pointer;
+  min-height: 44px;
+  background: linear-gradient(140deg, #fff8e8, #f0e2c6) !important;
+}
+.my-team-badge {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-family: 'Alfa Slab One', serif;
+  font-size: 14px;
+}
+.my-team-text { display: flex; flex-direction: column; min-width: 0; }
+.my-team-eyebrow {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--ink-brown);
+}
+.my-team-name {
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 600;
+  font-size: 17px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fav-player-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.fav-player-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px;
+  min-height: 66px;
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  box-shadow: 0 3px 0 var(--line);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.fav-card-slot {
+  width: 34px;
+  height: 46px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  background: repeating-linear-gradient(135deg, #efe3cb 0 6px, #e6d8ba 6px 12px);
+}
+.fav-player-text { display: flex; flex-direction: column; min-width: 0; }
+.fav-player-name {
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 600;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fav-player-meta { font-size: 11px; color: var(--win); }
+.fav-remove-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: none;
+  color: #c3b399;
+  font-size: 16px;
+  cursor: pointer;
+}
+.fav-remove-btn:active { color: var(--loss); }

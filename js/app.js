@@ -1,10 +1,11 @@
 import { renderHome } from './home.js';
 import { renderStandings } from './standings.js';
 import { renderPlayerSearch } from './player-search.js';
+import { renderCollection } from './collection.js';
 import { renderAlerts } from './alerts.js';
 import { renderRules } from './rules.js';
 
-const TITLES = { home: 'ホーム', standings: '順位表', 'player-search': '選手検索', alerts: 'お知らせ', rules: 'ルール解説' };
+const TITLES = { home: 'ホーム', standings: '順位表', 'player-search': '選手検索', collection: '推しコレクション', alerts: 'お知らせ', rules: 'ルール解説' };
 
 async function navigate(route) {
   document.querySelectorAll('.nav-btn').forEach((b) => b.classList.toggle('active', b.dataset.route === route));
@@ -25,6 +26,10 @@ async function navigate(route) {
     const el = document.getElementById('view-player-search');
     el.classList.add('active');
     await renderPlayerSearch(el);
+  } else if (route === 'collection') {
+    const el = document.getElementById('view-collection');
+    el.classList.add('active');
+    await renderCollection(el);
   } else if (route === 'alerts') {
     const el = document.getElementById('view-alerts');
     el.classList.add('active');

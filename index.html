@@ -5,11 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>MLB Watch | 日本語でMLBをまるごと</title>
 <meta name="description" content="日本にいながらMLBの試合結果・順位表を日本時間でチェックできるPWA" />
-<meta name="theme-color" content="#0a1120" />
+<meta name="theme-color" content="#7a2f1d" />
 <link rel="manifest" href="manifest.json" />
 <link rel="icon" href="icons/icon-192.png" />
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
 <link rel="stylesheet" href="css/style.css" />
+<link rel="stylesheet" href="css/card-shop-theme.css" />
+<link rel="stylesheet" href="css/card-shop-features.css" />
 </head>
 <body>
 <div class="stadium-glow"></div>
@@ -28,6 +30,7 @@
     <section id="view-player-search" class="view"></section>
     <section id="view-alerts" class="view"></section>
     <section id="view-rules" class="view"></section>
+    <section id="view-collection" class="view"></section>
   </main>
 
   <nav class="bottom-nav">
@@ -42,6 +45,10 @@
     <button class="nav-btn" data-route="player-search" aria-label="選手検索">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9.5" cy="8" r="3.5"/><path d="M3.5 20c0-3.6 2.7-6 6-6s6 2.4 6 6"/><circle cx="17" cy="16" r="3.3"/><path d="m21 20-2-2"/></svg>
       選手検索
+    </button>
+    <button class="nav-btn" data-route="collection" aria-label="推しコレクション">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="3" width="11" height="15" rx="2"/><path d="M9 21h11a1 1 0 0 0 1-1V7"/></svg>
+      コレクション
     </button>
     <button class="nav-btn" data-route="alerts" aria-label="お知らせ">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>

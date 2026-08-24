@@ -157,6 +157,41 @@ main {
   gap: 10px;
 }
 
+/* ホーム画面の本日/前日の試合一覧のみ、カードを半分の大きさにして2列で表示する */
+.scoreboard-list.game-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.game-card.game-card-compact {
+  padding: 10px 11px;
+}
+.game-card.game-card-compact .status-row {
+  margin-bottom: 6px;
+}
+.game-card.game-card-compact .status-pill {
+  font-size: 10px;
+  padding: 1px 6px;
+}
+.game-card.game-card-compact .game-time {
+  font-size: 11px;
+}
+.game-card.game-card-compact .matchup-row {
+  row-gap: 4px;
+}
+.game-card.game-card-compact .team-dot {
+  width: 7px;
+  height: 7px;
+}
+.game-card.game-card-compact .team-label {
+  font-size: 15px;
+}
+.game-card.game-card-compact .score-digit {
+  font-size: 20px;
+  min-width: 22px;
+}
+
 .game-card {
   background: var(--bg-panel);
   border: 1px solid var(--line);

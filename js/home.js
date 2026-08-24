@@ -1,5 +1,5 @@
 import { getGamesForJstDate, addDaysToDateString, toJstDateString, formatJstTime, formatJstDateLabel } from './api.js';
-import { teamName, teamColor } from './teams.js';
+import { teamName, teamShort, teamColor } from './teams.js';
 import { getFavorites } from './db.js';
 import { openGameSheet } from './game-sheet.js';
 import { pickTrivia } from './trivia.js';
@@ -44,7 +44,7 @@ function renderGameCard(game) {
   };
 
   return `
-    <button class="game-card ${isFav ? 'is-favorite' : ''}" data-gamepk="${game.gamePk}" data-away="${away.team.id}" data-home="${home.team.id}">
+    <button class="game-card game-card-compact ${isFav ? 'is-favorite' : ''}" data-gamepk="${game.gamePk}" data-away="${away.team.id}" data-home="${home.team.id}">
       <div class="status-row">
         <span class="status-pill ${info.cls}">${info.label}</span>
         <span class="game-time">${hasStarted && !isFinal ? '' : formatJstTime(game.gameDate)}${!hasStarted ? ' 開始' : ''}</span>
@@ -52,12 +52,12 @@ function renderGameCard(game) {
       <div class="matchup-row">
         <div class="team-line">
           <span class="team-dot" style="background:${teamColor(away.team.id)}"></span>
-          <span class="team-label ${awayWin ? 'winner' : isFinal ? 'loser' : ''}">${teamName(away.team.id)}</span>
+          <span class="team-label ${awayWin ? 'winner' : isFinal ? 'loser' : ''}" title="${teamName(away.team.id)}">${teamShort(away.team.id)}</span>
         </div>
         ${timeOrScoreRight(awayScore, awayWin)}
         <div class="team-line">
           <span class="team-dot" style="background:${teamColor(home.team.id)}"></span>
-          <span class="team-label ${homeWin ? 'winner' : isFinal ? 'loser' : ''}">${teamName(home.team.id)}</span>
+          <span class="team-label ${homeWin ? 'winner' : isFinal ? 'loser' : ''}" title="${teamName(home.team.id)}">${teamShort(home.team.id)}</span>
         </div>
         ${timeOrScoreRight(homeScore, homeWin)}
       </div>
@@ -80,7 +80,7 @@ function renderGameList(games) {
   if (!games.length) {
     return `<div class="empty-state">この日は試合がありません。</div>`;
   }
-  return `<div class="scoreboard-list">${sortGamesByFavorite(games).map(renderGameCard).join('')}</div>`;
+  return `<div class="scoreboard-list game-grid">${sortGamesByFavorite(games).map(renderGameCard).join('')}</div>`;
 }
 
 async function loadFavorites() {
