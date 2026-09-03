@@ -1,7 +1,16 @@
-// GitHub Actions専用スクリプト：毎日18時(JST)に、お気に入りチームの試合結果と次戦予定を
+// GitHub Actions専用スクリプト：毎日夕方(JST)に、お気に入りチームの試合結果と次戦予定を
 // Web Pushダイジェストとして送信する。Node単体で完結させるため、js/db.js（IndexedDB依存）は使わず、
 // JST日付計算のみ api.js と同じロジックをここで小さく再実装している。
 // クライアント側（js/*.js）はブラウザ専用のバンドラーなしES Modulesのままで、この分離を保つこと。
+//
+// 【送信ウィンドウについて】
+// GitHub Actionsのスケジュール実行は混雑時に数時間〜半日遅延することがあり、実測でも
+// 深夜〜翌朝に起動した回があった（例：2026-08-27の回が8/28 04:26 JSTに実行）。
+// そこでワークフロー側は夕方の時間帯に複数回起動し、このスクリプトが「JSTの送信ウィンドウ内か」を
+// 判定して、ウィンドウ外に遅延した回は送信せず次の回に委ねる。これにより
+//   ・深夜/翌朝に通知が届く
+//   ・日付をまたいだ実行が last_notified_date を翌日で埋め、翌日夕方の回が丸ごとスキップされる
+// の両方を防ぐ。手動テスト（workflow_dispatchのforce）ではウィンドウ判定を無視する。
 import webpush from 'web-push';
 import { TEAMS, teamName, teamShort } from '../js/teams.js';
 
@@ -11,6 +20,12 @@ const VAPID_PUBLIC_KEY = requireEnv('VAPID_PUBLIC_KEY');
 const VAPID_PRIVATE_KEY = requireEnv('VAPID_PRIVATE_KEY');
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'https://kake-udon.github.io';
 const FORCE_SEND = process.env.FORCE_SEND === 'true';
+
+// 送信ウィンドウ（JST、開始は以上・終了は未満）。既定は18:00〜20:59。
+const WINDOW_START_HOUR = Number(process.env.NOTIFY_WINDOW_START_HOUR ?? 18);
+const WINDOW_END_HOUR = Number(process.env.NOTIFY_WINDOW_END_HOUR ?? 21);
+// Push の有効期限（秒）。配信が遅れた通知が翌朝に届くのを防ぐため、ウィンドウを過ぎたら破棄させる。
+const PUSH_TTL_SECONDS = 4 * 60 * 60;
 
 const MLB_BASE = 'https://statsapi.mlb.com/api/v1';
 const SUPABASE_TABLE_URL = `${SUPABASE_URL}/rest/v1/push_subscriptions`;
@@ -35,6 +50,16 @@ function jstDayRangeUtc(jstDateStr) {
   const start = new Date(`${jstDateStr}T00:00:00+09:00`);
   const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
   return { start, end };
+}
+function jstHour(date = new Date()) {
+  const fmt = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Tokyo', hour: '2-digit', hourCycle: 'h23' });
+  return Number(fmt.format(date));
+}
+// 実行時刻（JST）が送信ウィンドウ内かどうか。ウィンドウ内であれば「今日」は必ず送信対象日と一致するため、
+// last_notified_date による重複ガードも日付ズレを起こさない。
+function isWithinSendWindow(date = new Date()) {
+  const hour = jstHour(date);
+  return hour >= WINDOW_START_HOUR && hour < WINDOW_END_HOUR;
 }
 function formatJstDateTime(isoString) {
   return new Intl.DateTimeFormat('ja-JP', {
@@ -137,7 +162,7 @@ function buildTeamLine(teamId, todayGames, upcomingGames, now) {
 async function sendPush(sub, payload) {
   const pushSubscription = { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } };
   try {
-    await webpush.sendNotification(pushSubscription, JSON.stringify(payload));
+    await webpush.sendNotification(pushSubscription, JSON.stringify(payload), { TTL: PUSH_TTL_SECONDS, urgency: 'high' });
     return { ok: true };
   } catch (err) {
     return { ok: false, statusCode: err.statusCode };
@@ -145,9 +170,18 @@ async function sendPush(sub, payload) {
 }
 
 async function main() {
+  const now = new Date();
+  if (!FORCE_SEND && !isWithinSendWindow(now)) {
+    // ここに来るのはスケジュール実行が大きく遅延した回。送信せず、同日の後続の回（または翌日）に委ねる。
+    console.log(
+      `送信ウィンドウ外のためスキップします（現在 ${jstHour(now)}時JST / ウィンドウ ${WINDOW_START_HOUR}:00〜${WINDOW_END_HOUR - 1}:59 JST）`
+    );
+    return;
+  }
+
   webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
-  const todayJst = toJstDateString();
+  const todayJst = toJstDateString(now);
   const subscriptions = await fetchSubscriptions();
   const targets = subscriptions.filter((s) => (FORCE_SEND || s.last_notified_date !== todayJst) && (s.team_ids || []).length > 0);
 
@@ -155,7 +189,6 @@ async function main() {
   if (!targets.length) return;
 
   const { todayGames, upcomingGames } = await fetchScheduleData();
-  const now = new Date();
 
   for (const sub of targets) {
     const lines = sub.team_ids.map((id) => buildTeamLine(id, todayGames, upcomingGames, now));

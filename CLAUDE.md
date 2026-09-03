@@ -18,7 +18,7 @@
 2. **JST（日本時間）基準の日付処理**：MLBの試合はアメリカの日付でグルーピングされるため、JST日付をまたぐ分を前後1日取得してフィルタするロジックが`api.js`にある（`getGamesForJstDate`, `jstDayRangeUtc`, `toJstDateString`など）。日付・時刻を扱う新機能は既存のJSTユーティリティを再利用し、独自に日付計算を書き直さない。
 3. **球団ロゴ・商標は不使用**：著作権配慮のため、チームは色（`teams.js`の`color`）とテキストのみで表現する。ロゴ画像や公式マークは追加しない。
 4. **GitHub Pagesのサブパス運用**：リポジトリ名のサブパス配下で公開されるため、`manifest.json`の`start_url`/`scope`やアセット参照はすべて相対パス。絶対パスに変更しない。
-5. **Web Push通知はGitHub Actions + Supabaseで完結させる**：静的サイトだけではPush送信をトリガーできないため、購読情報（Push endpoint・お気に入りチームID）はSupabase（無料枠）に保存し、送信は`.github/workflows/notify.yml`の毎日09:00 UTC（=18:00 JST）実行が担う。クライアント（`js/notifications.js`）はSupabaseへの書き込みまでしか行わない。送信ロジック（`scripts/send-notifications.mjs`）はNode専用でIndexedDB依存の`js/db.js`とは分離し、`js/teams.js`など純粋なデータ/関数モジュールのみ再利用する。
+5. **Web Push通知はGitHub Actions + Supabaseで完結させる**：静的サイトだけではPush送信をトリガーできないため、購読情報（Push endpoint・お気に入りチームID）はSupabase（無料枠）に保存し、送信は`.github/workflows/notify.yml`が担う。GitHub Actionsのスケジュール実行は数時間遅延することがあるため、夕方の時間帯に複数回起動し、送信するかどうかは`scripts/send-notifications.mjs`のJST送信ウィンドウ判定（既定18:00〜20:59、ウィンドウ外はスキップ）に委ねる方式にしている。cronの時刻だけを信用した実装に戻さないこと。クライアント（`js/notifications.js`）はSupabaseへの書き込みまでしか行わない。送信ロジック（`scripts/send-notifications.mjs`）はNode専用でIndexedDB依存の`js/db.js`とは分離し、`js/teams.js`など純粋なデータ/関数モジュールのみ再利用する。
 
 ## ディレクトリ構成
 ```
@@ -52,7 +52,7 @@ js/
   notifications.js … Web Push購読・解除・お気に入りチームIDのSupabase同期
 icons/            … オリジナル生成アイコン（商標不使用）
 supabase/schema.sql … Push購読テーブルのDDL（Supabase SQL Editorで実行）
-scripts/send-notifications.mjs … 毎日18時JSTのPushダイジェスト送信（GitHub Actions専用）
+scripts/send-notifications.mjs … 毎日夕方JSTのPushダイジェスト送信（GitHub Actions専用・送信ウィンドウ判定つき）
 .github/workflows/notify.yml    … 送信スケジュール（cron）と手動テスト送信（workflow_dispatch）
 ```
 
@@ -67,7 +67,8 @@ scripts/send-notifications.mjs … 毎日18時JSTのPushダイジェスト送信
 - **選手検索**（ロードマップ3）：全現役選手からの名前検索（日本人選手は日本語名・その他の選手も英語名から生成したカタカナ近似で検索可、`js/kana.js`）、選手詳細ボトムシート（プロフィール・当該シーズンの打撃/投手成績）、お気に入り選手登録。お気に入り選手の成績確認はこの画面から選手をタップする一本の導線に統一（旧「マイ成績」画面は廃止）。
 - **お知らせ**（ロードマップ4）：お気に入り投手の次回先発予定、お気に入り野手の直近の本塁打、お気に入りチームの試合予定・開始時間をまとめて表示
 - **豆知識コンテンツの拡充**（ロードマップ5）：ルール・記録/歴史・用語のカテゴリで20件に拡充（`js/trivia.js`）、ホーム画面に更新ボタンを追加し直前と異なる豆知識をランダム表示
-- **Web Push通知**（ロードマップ6）：お知らせ画面に通知トグルを追加、毎日18時（JST）にお気に入りチームの当日結果と次戦予定をダイジェスト通知。バックエンドはGitHub Actions（`.github/workflows/notify.yml`）+ Supabase（無料枠）。Supabaseプロジェクト作成・GitHub Secrets設定・Android実機でのPush受信まで確認済み（2026-08-20）。
+- **Web Push通知**（ロードマップ6）：お知らせ画面に通知トグルを追加、毎日夕方（JST）にお気に入りチームの当日結果と次戦予定をダイジェスト通知。バックエンドはGitHub Actions（`.github/workflows/notify.yml`）+ Supabase（無料枠）。Supabaseプロジェクト作成・GitHub Secrets設定・Android実機でのPush受信まで確認済み（2026-08-20）。
+- **通知タイミングの是正**（2026-09-03）：GitHub Actionsのスケジュール実行が最大11時間以上遅延し、通知が深夜〜翌朝に届いていた問題への対応。あわせて、日付をまたいだ実行が`last_notified_date`を翌日の日付で埋め、翌日夕方の回が「送信済み」と誤判定されて丸ごとスキップされる連鎖バグも修正（実測で8/29・9/1が未送信）。対応は3点：cronを18時台〜20時台の1日6回に分散（毎時0分の混雑を回避）、`send-notifications.mjs`にJST送信ウィンドウ判定を追加してウィンドウ外の回は送信しない、Push送信にTTL 4時間と`urgency: high`を指定して古い通知が翌朝届かないようにする。
 - **MLBルール解説**（ロードマップ7）：基本ルール・投球・打撃走塁・ポジション/守備・シーズン構成・用語集の6カテゴリ、計20項目を折りたたみ形式で表示（`js/rules.js`）。API通信なしの静的コンテンツ。
 
 ## 未実装（次のロードマップ）
