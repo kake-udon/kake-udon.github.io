@@ -4,26 +4,9 @@ import { TEAMS } from './teams.js';
 import { getFavorites } from './db.js';
 import { openPlayerSheet } from './player-sheet.js';
 import { toKatakana, containsKana, loosenKana, kanaMatches, getApproxKatakanaCached } from './kana.js';
+import { JP_NAME_ALIASES } from './player-names.js';
 
 const RESULT_LIMIT = 40;
-
-// 日本出身選手は日本語名でも検索できるようにする対応表（MLB Stats APIは英語表記のみのため）
-const JP_NAME_ALIASES = {
-  660271: ['大谷翔平', 'おおたに'],
-  808967: ['山本由伸', 'やまもと'],
-  808963: ['佐々木朗希', 'ささき'],
-  684007: ['今永昇太', 'いまなが'],
-  673540: ['千賀滉大', 'せんが'],
-  579328: ['菊池雄星', 'きくち'],
-  673548: ['鈴木誠也', 'すずき'],
-  807799: ['吉田正尚', 'よしだ'],
-  608372: ['菅野智之', 'すがの'],
-  837227: ['今井達也', 'いまい'],
-  673513: ['松井裕樹', 'まつい'],
-  808959: ['村上宗隆', 'むらかみ'],
-  807747: ['西田陸', 'にしだ'],
-  672960: ['岡本和真', 'おかもと'],
-};
 
 let allPlayers = [];
 let loaded = false;

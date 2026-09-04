@@ -186,13 +186,24 @@ export async function getAllPlayers(season) {
   return { players: data.people || [], fromCache, offline };
 }
 
-// 選手個人の詳細情報（当該シーズンの打撃・投手成績を含む）を取得
+// 選手個人の詳細情報（当該シーズンの打撃・投手成績＋通算成績を含む）を取得。
+// 通算成績はベースボールカードの裏面に表示するため、シーズン成績と同じ1リクエストで取得する。
 export async function getPlayerDetail(personId, season) {
-  const url = `${BASE}/people/${personId}?hydrate=currentTeam,stats(group=%5Bhitting,pitching%5D,type=%5Bseason%5D,season=${season})`;
-  const cacheKey = `player-detail:${personId}:${season}`;
+  const url = `${BASE}/people/${personId}?hydrate=currentTeam,stats(group=%5Bhitting,pitching%5D,type=%5Bseason,career%5D,season=${season})`;
+  // hydrate の内容を変えたためキャッシュキーも変更する（旧キャッシュには通算成績が入っていない）
+  const cacheKey = `player-detail-v2:${personId}:${season}`;
   const { data, fromCache, offline } = await cachedFetch(cacheKey, url);
   const person = (data.people || [])[0] || null;
   return { person, fromCache, offline };
+}
+
+// 選手の月別成績・試合ログ（ベースボールカードの月別グラフ・直近5試合用）。
+// プロフィール本体とは別リクエストにして、取得に失敗してもカード自体は表示できるようにする。
+export async function getPlayerSplits(personId, season) {
+  const url = `${BASE}/people/${personId}/stats?stats=byMonth,gameLog&group=hitting,pitching&season=${season}`;
+  const cacheKey = `player-splits:${personId}:${season}`;
+  const { data, fromCache, offline } = await cachedFetch(cacheKey, url);
+  return { stats: data.stats || [], fromCache, offline };
 }
 
 // --- 試合詳細（スコアボード・打席結果） ---

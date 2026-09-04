@@ -4,10 +4,17 @@ import { renderPlayerSearch } from './player-search.js';
 import { renderCollection } from './collection.js';
 import { renderAlerts } from './alerts.js';
 import { renderRules } from './rules.js';
+import { setNavigator } from './router.js';
+import { clearSheetStack } from './sheet-stack.js';
 
 const TITLES = { home: 'ホーム', standings: '順位表', 'player-search': '選手検索', collection: '推しコレクション', alerts: 'お知らせ', rules: 'ルール解説' };
 
 async function navigate(route) {
+  // 画面を切り替えるときは開いているシートを閉じ、シートの戻り先も破棄する
+  const sheetRoot = document.getElementById('sheet-root');
+  if (sheetRoot) sheetRoot.innerHTML = '';
+  clearSheetStack();
+
   document.querySelectorAll('.nav-btn').forEach((b) => b.classList.toggle('active', b.dataset.route === route));
   document.querySelectorAll('.view').forEach((v) => v.classList.remove('active'));
 
@@ -70,6 +77,7 @@ function registerServiceWorker() {
 }
 
 function init() {
+  setNavigator(navigate);
   initNav();
   updateClock();
   setInterval(updateClock, 30 * 1000);
