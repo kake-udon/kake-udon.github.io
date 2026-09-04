@@ -1,9 +1,10 @@
 import { getTeamScheduleByJstMonth, getStandings, getTeamRoster, toJstDateString, formatJstTime, currentSeasonYear } from './api.js';
-import { teamName, teamShort, teamColor, TEAMS, DIVISIONS } from './teams.js';
+import { teamName, teamShort, teamColor, teamEnNick, teamEnEyebrow, TEAMS, DIVISIONS } from './teams.js';
 import { getFavorites, toggleFavorite } from './db.js';
 import { openGameSheet } from './game-sheet.js';
 import { openPlayerSheet, positionJa } from './player-sheet.js';
-import { closeSheet, pushSheetBack } from './sheet-stack.js';
+import { closeSheet, pushSheetBack, clearSheetStack } from './sheet-stack.js';
+import { goToRoute } from './router.js';
 import { syncFavoriteTeams } from './notifications.js';
 
 const WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
@@ -12,18 +13,32 @@ function starIcon(filled) {
   return `<svg width="18" height="18" viewBox="0 0 24 24" fill="${filled ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.8"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>`;
 }
 
-// チーム名の下に表示する基本情報（創設年・リーグ優勝回数・WS優勝回数・公式サイト）
-function renderTeamMeta(teamId) {
+// チーム紹介の見出し（金箔フレームのカード）。
+// 球団ロゴ・商標は使わず、英語表記／日本語表記とチームカラーだけで見せる。
+function renderTeamHero(teamId) {
   const t = TEAMS[teamId];
   if (!t) return '';
-  const facts = [];
-  if (t.founded) facts.push(`${t.founded}年創設`);
-  if (t.pennants != null) facts.push(`リーグ優勝${t.pennants}回`);
-  if (t.worldSeries != null) facts.push(`WS優勝${t.worldSeries}回`);
+  const facts = [
+    { k: '創設', v: t.founded ? `${t.founded}` : '-' },
+    { k: 'WS制覇', v: t.worldSeries != null ? `${t.worldSeries}回` : '-' },
+    { k: 'リーグ優勝', v: t.pennants != null ? `${t.pennants}回` : '-' },
+  ];
   const link = t.homepage
     ? `<a class="team-sheet-link" href="${t.homepage}" target="_blank" rel="noopener noreferrer">公式サイト<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M9 7h8v8"/></svg></a>`
     : '';
-  return `<div class="team-sheet-meta">${facts.join('　')}${link}</div>`;
+  return `
+    <div class="foil-frame team-hero-frame">
+      <div class="team-hero">
+        <div class="team-hero-eyebrow">${teamEnEyebrow(teamId)}</div>
+        <div class="team-hero-en" style="border-bottom-color:${t.color}">${teamEnNick(teamId).toUpperCase()}</div>
+        <div class="team-hero-ja"><span class="team-dot" style="background:${t.color}"></span>${t.name}</div>
+        <div class="team-fact-row">
+          ${facts.map((f) => `<div class="team-fact"><span class="team-fact-key">${f.k}</span><span class="team-fact-val">${f.v}</span></div>`).join('')}
+        </div>
+        ${link ? `<div class="team-hero-link">${link}</div>` : ''}
+      </div>
+    </div>
+  `;
 }
 
 export async function openTeamSheet(teamId) {
@@ -37,18 +52,19 @@ export async function openTeamSheet(teamId) {
   let viewMonth = todayMonth;
 
   root.innerHTML = `
-    <div class="sheet-backdrop" id="sheet-backdrop">
-      <div class="sheet">
-        <div class="sheet-header">
-          <div class="sheet-header-title">
-            <h2><span class="team-dot" style="background:${teamColor(teamId)}"></span>${teamName(teamId)}</h2>
-            ${renderTeamMeta(teamId)}
-          </div>
-          <div class="sheet-header-actions">
-            <button class="fav-toggle-btn ${isFav ? 'active' : ''}" id="sheet-fav-btn" aria-label="お気に入り登録・解除">${starIcon(isFav)}</button>
-            <button class="sheet-close" id="sheet-close">×</button>
-          </div>
+    <div class="sheet-backdrop is-full" id="sheet-backdrop">
+      <div class="sheet full-sheet">
+        <div class="full-sheet-bar">
+          <button class="full-sheet-btn back" id="sheet-back">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m14 6-6 6 6 6"/></svg>元に戻る
+          </button>
+          <button class="full-sheet-btn" id="sheet-to-standings">
+            順位表へ<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m10 6 6 6-6 6"/></svg>
+          </button>
+          <button class="fav-toggle-btn ${isFav ? 'active' : ''}" id="sheet-fav-btn" aria-label="お気に入り登録・解除">${starIcon(isFav)}</button>
         </div>
+        <div class="full-sheet-body">
+        ${renderTeamHero(teamId)}
         <div id="team-standing-summary"></div>
         <div class="section-title" style="margin-top:18px;">試合カレンダー</div>
         <div class="calendar-nav">
@@ -65,14 +81,18 @@ export async function openTeamSheet(teamId) {
           </summary>
           <div id="roster-list" style="margin-top:10px;"><div class="spinner"></div></div>
         </details>
+        </div>
       </div>
     </div>
   `;
 
-  const close = () => closeSheet(root);
-  document.getElementById('sheet-close').onclick = close;
-  document.getElementById('sheet-backdrop').onclick = (e) => {
-    if (e.target.id === 'sheet-backdrop') close();
+  // 「元に戻る」：呼び出し元のシートがあればそこへ戻り、なければチーム紹介を閉じる
+  document.getElementById('sheet-back').onclick = () => closeSheet(root);
+  // 「順位表へ」：シートをすべて閉じて順位表画面へ移動する
+  document.getElementById('sheet-to-standings').onclick = () => {
+    clearSheetStack();
+    root.innerHTML = '';
+    goToRoute('standings');
   };
   document.getElementById('sheet-fav-btn').onclick = async () => {
     isFav = await toggleFavorite({ type: 'team', id: teamId, name: teamName(teamId) });

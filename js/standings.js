@@ -3,6 +3,7 @@ import { TEAMS, DIVISIONS, teamColor, teamName } from './teams.js';
 import { openTeamSheet } from './team-sheet.js';
 import { getFavorites } from './db.js';
 import { psClass, renderWildcardCard } from './postseason.js';
+import { renderGbRuler } from './gb-ruler.js';
 
 let cachedRecords = null;
 let teamRecordById = new Map(); // teamId -> teamRecord（絞り込みの判定に使用）
@@ -12,6 +13,7 @@ let favoriteTeamIds = new Set();
 let mapLeagueFilter = null; // null | 103 | 104
 let mapDivisionFilter = null; // null | 'west' | 'central' | 'east'（リーグをまたいだ地区の括り）
 let mapPlayoffOnly = false;
+let gbRulerMode = false; // 「ゲーム差ものさし」表示モード（地区ごとに横軸でゲーム差を可視化）
 
 const ALL_DIVISION_IDS = [201, 202, 200, 204, 205, 203]; // ア東・ア中・ア西・ナ東・ナ中・ナ西の順で表示
 
@@ -138,6 +140,7 @@ function renderMapFilters() {
       </div>
       <div class="filter-row">
         <button class="filter-pill toggle-pill ${mapPlayoffOnly ? 'active' : ''}" data-filter="playoff">PS圏内のみ</button>
+        <button class="filter-pill toggle-pill ${gbRulerMode ? 'active' : ''}" data-filter="gbruler" aria-pressed="${gbRulerMode}">ゲーム差ものさし</button>
       </div>
     </div>
   `;
@@ -166,6 +169,8 @@ function wireMapFilters(container) {
         mapDivisionFilter = btn.dataset.value || null;
       } else if (kind === 'playoff') {
         mapPlayoffOnly = !mapPlayoffOnly;
+      } else if (kind === 'gbruler') {
+        gbRulerMode = !gbRulerMode;
       }
       refreshFiltered(container);
     };
@@ -244,6 +249,7 @@ function renderBody(container) {
     return `
       <div class="division-block">
         <div class="division-header">${DIVISIONS[divId]}</div>
+        ${gbRulerMode ? renderGbRuler(DIVISIONS[divId], filteredTeams) : ''}
         ${renderDivisionTable(filteredTeams)}
       </div>
     `;
@@ -253,8 +259,14 @@ function renderBody(container) {
     ? blocks + renderWildcardCard(cachedRecords, 104, 'ナ・リーグ') + renderWildcardCard(cachedRecords, 103, 'ア・リーグ')
     : `<div class="empty-state">条件に一致するチームがありません。</div>`;
   wireInteractions(container);
-  body.querySelectorAll('.wc-row[data-teamid]').forEach((row) => {
+  body.querySelectorAll('.wc-row[data-teamid], .gb-row[data-teamid]').forEach((row) => {
     row.onclick = () => openTeamSheet(Number(row.dataset.teamid));
+    row.onkeydown = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openTeamSheet(Number(row.dataset.teamid));
+      }
+    };
   });
 }
 

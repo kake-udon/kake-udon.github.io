@@ -168,3 +168,451 @@
   cursor: pointer;
 }
 .fav-remove-btn:active { color: var(--loss); }
+
+/* =========================================================
+   全画面シート（チーム紹介・選手カード）
+   ボトムシート（.sheet）と同じ構造のまま、画面いっぱいに広げる版。
+   上部に「元に戻る」「順位表へ」の操作バーを固定する。
+   ========================================================= */
+.sheet-backdrop.is-full {
+  align-items: stretch;
+  background: rgba(58, 42, 28, 0.6);
+}
+.sheet.full-sheet {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-height: none;
+  border-radius: 0;
+  border-top: none;
+  overflow: hidden;
+  padding: 0;
+}
+.full-sheet-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) 12px 8px;
+  background: var(--ink-brown);
+  border-bottom: 5px solid var(--amber);
+}
+.full-sheet-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid rgba(247, 239, 221, 0.45);
+  border-radius: 8px;
+  background: rgba(247, 239, 221, 0.1);
+  color: #f7efdd;
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.full-sheet-btn:active { background: rgba(247, 239, 221, 0.25); }
+.full-sheet-btn.back { margin-right: auto; }
+.full-sheet-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  color: #f7efdd;
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 600;
+  font-size: 15px;
+}
+.full-sheet-bar .fav-toggle-btn {
+  flex-shrink: 0;
+  background: rgba(247, 239, 221, 0.1);
+  border: 1px solid rgba(247, 239, 221, 0.45);
+  color: #f7efdd;
+}
+.full-sheet-bar .fav-toggle-btn.active { color: var(--amber); }
+.full-sheet-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px 18px calc(24px + var(--safe-bottom));
+}
+
+/* ---- ④ チーム紹介のヘッダーカード ---- */
+.team-hero-frame { margin-bottom: 16px; }
+.team-hero { padding: 14px 16px; }
+.team-hero-eyebrow {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--ink-brown);
+}
+.team-hero-en {
+  font-family: 'Alfa Slab One', serif;
+  font-size: 29px;
+  line-height: 1.15;
+  color: var(--chalk);
+  border-bottom: 4px solid var(--line);
+  padding-bottom: 4px;
+  overflow-wrap: anywhere;
+}
+.team-hero-ja {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 600;
+  font-size: 15px;
+  color: #5c4a34;
+}
+.team-fact-row { display: flex; gap: 9px; margin-top: 12px; }
+.team-fact {
+  flex: 1;
+  min-width: 0;
+  border-radius: 7px;
+  background: #fffdf7;
+  border: 1px solid var(--line);
+  padding: 8px 6px;
+  text-align: center;
+}
+.team-fact-key {
+  display: block;
+  font-family: 'Noto Serif JP', serif;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--chalk-dim);
+}
+.team-fact-val {
+  display: block;
+  font-family: 'Alfa Slab One', serif;
+  font-size: 17px;
+  line-height: 1.35;
+  color: var(--ink-brown);
+}
+.team-hero-link { margin-top: 10px; }
+
+/* =========================================================
+   ⑤ ゲーム差ものさし（順位表の可視化モード）
+   ========================================================= */
+.gb-ruler-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  box-shadow: 0 3px 0 var(--line);
+  border-radius: var(--radius-md);
+  padding: 14px 15px 12px;
+  margin: 10px 0 12px;
+  /* ものさしの目盛りは「印の左端」を基準に置く。印の幅ぶんを右に空けておくことで
+     ゲーム差が最大のチームでも枠外にはみ出さない。 */
+  --gb-mark-w: 104px;
+}
+.gb-ruler-head {
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--ink-brown);
+  margin-bottom: 12px;
+}
+.gb-ruler-sub { color: var(--chalk-dim); font-weight: 400; margin-left: 8px; }
+.gb-row {
+  display: block;
+  width: 100%;
+  padding: 2px 0;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.gb-row:active { background: var(--press); }
+.gb-track { position: relative; height: 24px; }
+.gb-mark {
+  position: absolute;
+  top: 2px;
+  left: calc((100% - var(--gb-mark-w)) * var(--x));
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: var(--gb-mark-w);
+}
+.gb-pennant {
+  width: 54px;
+  height: 20px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding-left: 7px;
+  color: #fff;
+  font-family: 'Alfa Slab One', serif;
+  font-size: 10px;
+  clip-path: polygon(0 0, 100% 0, 84% 50%, 100% 100%, 0 100%);
+}
+.gb-value {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 11px;
+  color: var(--chalk-dim);
+  white-space: nowrap;
+}
+.gb-row.ps-division .gb-value { color: var(--ink-brown); font-weight: 700; }
+.gb-axis-line {
+  height: 2px;
+  background: var(--line);
+  margin-top: 4px;
+}
+.gb-axis-ticks { position: relative; height: 18px; }
+.gb-tick {
+  position: absolute;
+  left: calc((100% - var(--gb-mark-w)) * var(--x));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.gb-tick i { width: 1px; height: 5px; background: #c3b399; }
+.gb-tick em {
+  font-family: 'Roboto Mono', monospace;
+  font-style: normal;
+  font-size: 10px;
+  color: #a3927a;
+}
+.gb-ruler-note {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--chalk-dim);
+  margin-top: 6px;
+}
+
+/* =========================================================
+   ⑦ 選手プロフィール：ベースボールカード
+   ========================================================= */
+.baseball-card {
+  display: block;
+  width: 100%;
+  height: 452px;
+  margin: 0 0 14px;
+  padding: 0;
+  border: none;
+  background: none;
+  perspective: 1200px;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+.baseball-card-inner {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.7s cubic-bezier(0.3, 0.8, 0.3, 1);
+}
+.baseball-card.flipped .baseball-card-inner { transform: rotateY(180deg); }
+.baseball-card-face {
+  position: absolute;
+  inset: 0;
+  display: block;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.baseball-card-face.back {
+  transform: rotateY(180deg);
+  border-radius: 13px;
+  padding: 8px;
+  background: linear-gradient(140deg, #7a2f1d, #a94b2e);
+  box-shadow: 0 14px 30px rgba(58, 42, 28, 0.24);
+}
+.card-paper {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  height: 100%;
+  border-radius: 7px;
+  padding: 12px;
+}
+.card-paper.back-paper { background: #fffdf7; gap: 6px; }
+.card-top { display: flex; justify-content: space-between; align-items: center; }
+.card-season {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--ink-brown);
+}
+.card-rarity {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  background: var(--ink-brown);
+  color: #f7efdd;
+  padding: 2px 7px;
+  border-radius: 3px;
+}
+.card-photo {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  border-radius: 5px;
+  border: 1px solid var(--line);
+  background: repeating-linear-gradient(135deg, #efe3cb 0 9px, #e6d8ba 9px 18px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.card-initials {
+  font-family: 'Alfa Slab One', serif;
+  font-size: 62px;
+  line-height: 1;
+  color: var(--team-color, #8a765c);
+  opacity: 0.85;
+  text-shadow: 0 2px 0 rgba(255, 253, 247, 0.85);
+}
+.card-photo-note {
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 10px;
+  color: #a3927a;
+}
+.card-name-block { display: block; }
+.card-surname {
+  display: block;
+  font-family: 'Alfa Slab One', serif;
+  font-size: 26px;
+  line-height: 1.1;
+  color: var(--chalk);
+  overflow-wrap: anywhere;
+}
+.card-fullname {
+  display: block;
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 600;
+  font-size: 14px;
+  color: #5c4a34;
+}
+.card-position {
+  display: block;
+  font-family: 'Noto Serif JP', serif;
+  font-size: 11px;
+  color: var(--chalk-dim);
+}
+.card-flip-hint {
+  display: block;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 10px;
+  color: var(--chalk-dim);
+  border-top: 1px dashed var(--line);
+  padding-top: 6px;
+}
+.card-back-title { font-family: 'Alfa Slab One', serif; font-size: 17px; color: var(--chalk); }
+.card-career-list { display: block; flex: 1; min-height: 0; overflow: hidden; }
+.card-career-row {
+  display: flex;
+  justify-content: space-between;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  border-bottom: 1px dashed #e2d3b6;
+  padding-bottom: 5px;
+  margin-bottom: 5px;
+}
+.card-career-row span { color: var(--chalk-dim); }
+.card-career-row b { color: var(--chalk); }
+.card-career-empty { display: block; font-size: 12px; color: var(--chalk-dim); }
+@media (prefers-reduced-motion: reduce) {
+  .baseball-card-inner { transition: none; }
+}
+
+/* ---- カード下の成績パネル ---- */
+.stat-bulb-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.stat-bulb {
+  border-radius: 9px;
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  box-shadow: 0 3px 0 var(--line);
+  padding: 9px 4px;
+  text-align: center;
+}
+.stat-bulb-label { display: block; font-family: 'Noto Serif JP', serif; font-size: 10px; color: var(--chalk-dim); }
+.stat-bulb-val {
+  display: block;
+  font-family: 'Alfa Slab One', serif;
+  font-size: 19px;
+  line-height: 1.3;
+  color: var(--ink-brown);
+}
+
+.card-panel {
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  box-shadow: 0 3px 0 var(--line);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.card-panel-title {
+  font-family: 'Alfa Slab One', serif;
+  font-size: 15px;
+  color: var(--chalk);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+.card-panel-note {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--chalk-dim);
+}
+.card-panel .standing-summary-stats { margin: 0; }
+
+.monthly-chart { display: flex; align-items: flex-end; gap: 10px; min-height: 120px; }
+.monthly-bar-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  justify-content: flex-end;
+}
+.monthly-bar-val { font-family: 'Roboto Mono', monospace; font-size: 10px; color: var(--ink-brown); }
+.monthly-bar {
+  width: 100%;
+  border-radius: 4px 4px 0 0;
+  background: repeating-linear-gradient(45deg, #d9a441 0 6px, #c8912f 6px 12px);
+}
+.monthly-bar-label { font-family: 'Noto Serif JP', serif; font-size: 11px; color: var(--chalk-dim); }
+
+.game-log-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 7px 0;
+  border-bottom: 1px dashed #e2d3b6;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 12px;
+}
+.game-log-row:last-child { border-bottom: none; }
+.game-log-date { color: var(--chalk-dim); width: 42px; flex-shrink: 0; }
+.game-log-opp { font-family: 'Alfa Slab One', serif; font-size: 11px; width: 56px; flex-shrink: 0; }
+.game-log-line { color: var(--chalk); min-width: 0; }
+
+.profile-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px dashed #e2d3b6;
+  font-size: 13px;
+}
+.profile-row:last-child { border-bottom: none; }
+.profile-row span { color: var(--chalk-dim); flex-shrink: 0; }
+.profile-row b { font-weight: 600; text-align: right; }
