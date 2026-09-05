@@ -13,7 +13,7 @@ function wcgbValue(tr) {
 // 行に付けるクラス。card-shop-theme.css が左端の色帯として描画する。
 //   ps-division … 地区首位（金）
 //   ps-wildcard … WC圏内（緑）
-//   ps-bubble   … 当落線上（2.0ゲーム差以内、淡いタン）
+//   ps-bubble   … 当落線上（2.0ゲーム差以内、赤）
 //   ''          … 圏外
 export function psClass(tr) {
   if (!tr) return '';
@@ -82,7 +82,6 @@ export function renderWildcardCard(records, leagueId, leagueLabel) {
         <span><i class="lg-division"></i>地区首位</span>
         <span><i class="lg-wildcard"></i>WC圏内</span>
         <span><i class="lg-bubble"></i>当落線上</span>
-        <span><i class="lg-out"></i>圏外</span>
       </div>
     </div>
   `;

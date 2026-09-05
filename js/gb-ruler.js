@@ -35,7 +35,8 @@ function ticksFor(max) {
 }
 
 // 1地区分のものさし。records は同一地区の teamRecord 配列。
-export function renderGbRuler(divisionLabel, records) {
+// showNote は軸の読み方の補足を添えるか（順位表では最初の地区にだけ付ける）。
+export function renderGbRuler(divisionLabel, records, showNote = false) {
   if (!records || !records.length) return '';
   const rows = [...records].sort((a, b) => (a.divisionRank || 99) - (b.divisionRank || 99));
   const max = rulerMax(Math.max(...rows.map(gamesBackValue), 0));
@@ -69,7 +70,7 @@ export function renderGbRuler(divisionLabel, records) {
         <div class="gb-axis-line"></div>
         <div class="gb-axis-ticks">${ticks}</div>
       </div>
-      <div class="gb-ruler-note">左端が首位。右へ離れるほど首位とのゲーム差が大きい。目盛りの単位はゲーム差。</div>
+      ${showNote ? '<div class="gb-ruler-note">左端が首位。右へ離れるほど首位とのゲーム差が大きい。目盛りの単位はゲーム差。</div>' : ''}
     </div>
   `;
 }

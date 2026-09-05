@@ -3,8 +3,7 @@ import { teamName, teamShort, teamColor, teamEnNick, teamEnEyebrow, TEAMS, DIVIS
 import { getFavorites, toggleFavorite } from './db.js';
 import { openGameSheet } from './game-sheet.js';
 import { openPlayerSheet, positionJa } from './player-sheet.js';
-import { closeSheet, pushSheetBack, clearSheetStack } from './sheet-stack.js';
-import { goToRoute } from './router.js';
+import { closeSheet, pushSheetBack } from './sheet-stack.js';
 import { syncFavoriteTeams } from './notifications.js';
 
 const WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
@@ -58,9 +57,7 @@ export async function openTeamSheet(teamId) {
           <button class="full-sheet-btn back" id="sheet-back">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m14 6-6 6 6 6"/></svg>元に戻る
           </button>
-          <button class="full-sheet-btn" id="sheet-to-standings">
-            順位表へ<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m10 6 6 6-6 6"/></svg>
-          </button>
+          <span class="full-sheet-title">チーム紹介</span>
           <button class="fav-toggle-btn ${isFav ? 'active' : ''}" id="sheet-fav-btn" aria-label="お気に入り登録・解除">${starIcon(isFav)}</button>
         </div>
         <div class="full-sheet-body">
@@ -88,12 +85,6 @@ export async function openTeamSheet(teamId) {
 
   // 「元に戻る」：呼び出し元のシートがあればそこへ戻り、なければチーム紹介を閉じる
   document.getElementById('sheet-back').onclick = () => closeSheet(root);
-  // 「順位表へ」：シートをすべて閉じて順位表画面へ移動する
-  document.getElementById('sheet-to-standings').onclick = () => {
-    clearSheetStack();
-    root.innerHTML = '';
-    goToRoute('standings');
-  };
   document.getElementById('sheet-fav-btn').onclick = async () => {
     isFav = await toggleFavorite({ type: 'team', id: teamId, name: teamName(teamId) });
     const btn = document.getElementById('sheet-fav-btn');

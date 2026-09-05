@@ -1,7 +1,11 @@
-// 試合詳細ボトムシート：スコアボード（ラインスコア）と打席ごとの結果
+// 試合詳細の全画面シート：スコアボード（ラインスコア）と打席ごとの結果。
+// スコアボードは上部に固定し、その下（結果サマリー・出場選手成績）だけを独立してスクロールさせる。
 import { getGameSummary, getGameLinescore, getGamePlayByPlay, getGameBoxscore, formatJstTime, formatJstDateLabel } from './api.js';
 import { teamName, teamShort, teamColor } from './teams.js';
-import { closeSheet } from './sheet-stack.js';
+import { closeSheet, pushSheetBack } from './sheet-stack.js';
+// team-sheet.js とは相互参照になるが、双方とも呼び出しは実行時のみで
+// モジュール評価時に相手を参照しないため循環参照になっても問題ない。
+import { openTeamSheet } from './team-sheet.js';
 
 // MLB Stats APIの result.event（英語）を日本語の短いラベルに変換する。
 // 未登録のイベントは英語表記のままフォールバックする。
@@ -203,6 +207,18 @@ function googleMapsUrl(venue) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(parts.join(', '))}`;
 }
 
+// スコアボードの対戦チーム1行。チーム名をタップするとチーム紹介へ移動できるようにする。
+function renderMatchupTeam(side, score, isWinner, isFinal) {
+  const teamId = side.team.id;
+  return `
+    <button class="game-sheet-team" data-teamid="${teamId}" aria-label="${teamName(teamId)}のチーム紹介を開く">
+      <span class="team-dot" style="background:${teamColor(teamId)}"></span>
+      <span class="team-label ${isWinner ? 'winner' : isFinal ? 'loser' : ''}">${teamName(teamId)}</span>
+      ${score !== null ? `<span class="score-digit ${isFinal && !isWinner ? 'dim' : ''}">${score}</span>` : ''}
+    </button>
+  `;
+}
+
 function renderHeader(game) {
   const away = game.teams.away;
   const home = game.teams.home;
@@ -224,17 +240,10 @@ function renderHeader(game) {
         </a>
       ` : ''}
       <div class="game-sheet-matchup">
-        <div class="game-sheet-team">
-          <span class="team-dot" style="background:${teamColor(away.team.id)}"></span>
-          <span class="team-label ${awayWin ? 'winner' : isFinal ? 'loser' : ''}">${teamName(away.team.id)}</span>
-          ${awayScore !== null ? `<span class="score-digit ${isFinal && !awayWin ? 'dim' : ''}">${awayScore}</span>` : ''}
-        </div>
-        <div class="game-sheet-team">
-          <span class="team-dot" style="background:${teamColor(home.team.id)}"></span>
-          <span class="team-label ${homeWin ? 'winner' : isFinal ? 'loser' : ''}">${teamName(home.team.id)}</span>
-          ${homeScore !== null ? `<span class="score-digit ${isFinal && !homeWin ? 'dim' : ''}">${homeScore}</span>` : ''}
-        </div>
+        ${renderMatchupTeam(away, awayScore, awayWin, isFinal)}
+        ${renderMatchupTeam(home, homeScore, homeWin, isFinal)}
       </div>
+      <div class="game-sheet-team-hint">チーム名をタッチするとチーム紹介が開きます</div>
     </div>
   `;
 }
@@ -449,77 +458,15 @@ function renderInningDetail(inning, halfInning, playByPlay, game) {
   `;
 }
 
-// シート全体のスワイプ操作：上へスワイプでフルスクリーン化、下へスワイプで閉じる。
-// つまみだけだと掴みにくいため反応領域はシート全体に広げつつ、一定量動くまでは
-// ドラッグとして確定させない（タップやスクロール操作と衝突しないようにするため）。
-// スクロール領域内で始まった操作は、そこが最上部（scrollTop===0）のときだけドラッグとして扱う。
-function wireDragHandle(panel, close) {
-  const UP_THRESHOLD = -40;
-  const DOWN_THRESHOLD = 60;
-  const MOVE_THRESHOLD = 8; // これ未満はタップ・通常スクロールとして扱う
-  const SCROLLABLE_SELECTOR = '#game-sheet-scroll, #inning-detail-panel';
-
-  let pointerId = null;
-  let startX = null;
-  let startY = null;
-  let startScrollable = null;
-  let dragging = false; // 一定量動いてドラッグとして確定した後のみtrue
-  let blocked = false; // 通常のスクロール・横方向操作と判定済み
-
-  const resetState = () => {
-    pointerId = null;
-    startX = null;
-    startY = null;
-    startScrollable = null;
-    dragging = false;
-    blocked = false;
-    panel.classList.remove('dragging');
-    panel.style.transform = '';
-  };
-
-  panel.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'mouse' && e.button !== 0) return;
-    pointerId = e.pointerId;
-    startX = e.clientX;
-    startY = e.clientY;
-    startScrollable = e.target.closest(SCROLLABLE_SELECTOR);
-    dragging = false;
-    blocked = false;
+// スコアボードのチーム名タップで、そのチームのチーム紹介を開く。
+// 閉じたときにこの試合詳細へ戻れるよう、戻り先を積んでおく。
+function wireTeamTaps(fixedRoot, gamePk) {
+  fixedRoot.querySelectorAll('.game-sheet-team[data-teamid]').forEach((btn) => {
+    btn.onclick = () => {
+      pushSheetBack(() => openGameSheet(gamePk));
+      openTeamSheet(Number(btn.dataset.teamid));
+    };
   });
-
-  panel.addEventListener('pointermove', (e) => {
-    if (pointerId === null || e.pointerId !== pointerId || blocked) return;
-    const deltaY = e.clientY - startY;
-
-    if (!dragging) {
-      if (Math.abs(deltaY) < MOVE_THRESHOLD) return;
-      const deltaX = e.clientX - startX;
-      if (Math.abs(deltaX) > Math.abs(deltaY)) { blocked = true; return; }
-      if (startScrollable && startScrollable.scrollTop > 0) { blocked = true; return; }
-      dragging = true;
-      panel.classList.add('dragging');
-      try { panel.setPointerCapture(pointerId); } catch (err) { /* 一部環境ではポインタが無効な場合がある */ }
-    }
-
-    panel.style.transform = `translateY(${Math.max(-60, Math.min(90, deltaY))}px)`;
-    e.preventDefault();
-  });
-
-  const endDrag = (e) => {
-    if (dragging && startY !== null) {
-      const deltaY = e.clientY - startY;
-      if (deltaY <= UP_THRESHOLD) {
-        panel.classList.add('fullscreen');
-      } else if (deltaY >= DOWN_THRESHOLD) {
-        close();
-        return;
-      }
-    }
-    resetState();
-  };
-
-  panel.addEventListener('pointerup', endDrag);
-  panel.addEventListener('pointercancel', endDrag);
 }
 
 // スコアボードのイニング欄タップで、その回だけの打席結果をスコアボード直下に展開する。
@@ -566,12 +513,13 @@ export async function openGameSheet(gamePk) {
   const root = document.getElementById('sheet-root');
 
   root.innerHTML = `
-    <div class="sheet-backdrop" id="sheet-backdrop">
-      <div class="sheet game-sheet" id="game-sheet-panel">
-        <div class="sheet-drag-handle" id="game-sheet-handle"><span class="handle-bar"></span></div>
-        <div class="sheet-header">
-          <h2>試合詳細</h2>
-          <button class="sheet-close" id="sheet-close" aria-label="閉じる">×</button>
+    <div class="sheet-backdrop is-full" id="sheet-backdrop">
+      <div class="sheet full-sheet game-sheet" id="game-sheet-panel">
+        <div class="full-sheet-bar">
+          <button class="full-sheet-btn back" id="sheet-back">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m14 6-6 6 6 6"/></svg>元に戻る
+          </button>
+          <span class="full-sheet-title">試合詳細</span>
         </div>
         <div id="game-sheet-fixed"><div class="spinner"></div></div>
         <div id="game-sheet-scroll"></div>
@@ -580,12 +528,8 @@ export async function openGameSheet(gamePk) {
     </div>
   `;
 
-  const close = () => closeSheet(root);
-  document.getElementById('sheet-close').onclick = close;
-  document.getElementById('sheet-backdrop').onclick = (e) => {
-    if (e.target.id === 'sheet-backdrop') close();
-  };
-  wireDragHandle(document.getElementById('game-sheet-panel'), close);
+  // 「元に戻る」：呼び出し元のシートがあればそこへ戻り、なければ試合詳細を閉じる
+  document.getElementById('sheet-back').onclick = () => closeSheet(root);
 
   try {
     const { game } = await getGameSummary(gamePk);
@@ -608,6 +552,7 @@ export async function openGameSheet(gamePk) {
           ${homeProbable ? `${teamShort(game.teams.home.team.id)} ${homeProbable.fullName}` : ''}
         </div>
       `;
+      wireTeamTaps(fixed, gamePk);
       return;
     }
 
@@ -644,6 +589,7 @@ export async function openGameSheet(gamePk) {
 
     const panelNow = document.getElementById('inning-detail-panel');
     wireInningTaps(fixedNow, scrollNow, panelNow, playByPlayRes.data, game);
+    wireTeamTaps(fixedNow, gamePk);
   } catch (e) {
     const fixed = document.getElementById('game-sheet-fixed');
     if (fixed) fixed.innerHTML = `<div class="empty-state">試合詳細を取得できませんでした。</div>`;

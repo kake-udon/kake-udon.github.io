@@ -13,7 +13,6 @@ let favoriteTeamIds = new Set();
 let mapLeagueFilter = null; // null | 103 | 104
 let mapDivisionFilter = null; // null | 'west' | 'central' | 'east'（リーグをまたいだ地区の括り）
 let mapPlayoffOnly = false;
-let gbRulerMode = false; // 「ゲーム差ものさし」表示モード（地区ごとに横軸でゲーム差を可視化）
 
 const ALL_DIVISION_IDS = [201, 202, 200, 204, 205, 203]; // ア東・ア中・ア西・ナ東・ナ中・ナ西の順で表示
 
@@ -140,7 +139,6 @@ function renderMapFilters() {
       </div>
       <div class="filter-row">
         <button class="filter-pill toggle-pill ${mapPlayoffOnly ? 'active' : ''}" data-filter="playoff">PS圏内のみ</button>
-        <button class="filter-pill toggle-pill ${gbRulerMode ? 'active' : ''}" data-filter="gbruler" aria-pressed="${gbRulerMode}">ゲーム差ものさし</button>
       </div>
     </div>
   `;
@@ -169,8 +167,6 @@ function wireMapFilters(container) {
         mapDivisionFilter = btn.dataset.value || null;
       } else if (kind === 'playoff') {
         mapPlayoffOnly = !mapPlayoffOnly;
-      } else if (kind === 'gbruler') {
-        gbRulerMode = !gbRulerMode;
       }
       refreshFiltered(container);
     };
@@ -241,15 +237,19 @@ function renderBody(container) {
     body.innerHTML = `<div class="empty-state">現在、順位表データがありません。シーズン開幕前後は表示できない場合があります。</div>`;
     return;
   }
+  let isFirstBlock = true;
   const blocks = ALL_DIVISION_IDS.map((divId) => {
     const rec = cachedRecords.find((r) => r.division && r.division.id === divId);
     if (!rec) return '';
     const filteredTeams = (rec.teamRecords || []).filter((tr) => matchesMapFilter(tr.team.id));
     if (!filteredTeams.length) return '';
+    // 軸の読み方の説明は繰り返しになるため、最初に表示する地区にだけ添える
+    const withNote = isFirstBlock;
+    isFirstBlock = false;
     return `
       <div class="division-block">
         <div class="division-header">${DIVISIONS[divId]}</div>
-        ${gbRulerMode ? renderGbRuler(DIVISIONS[divId], filteredTeams) : ''}
+        ${renderGbRuler(DIVISIONS[divId], filteredTeams, withNote)}
         ${renderDivisionTable(filteredTeams)}
       </div>
     `;

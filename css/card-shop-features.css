@@ -77,8 +77,7 @@
 }
 .wc-legend .lg-division { background: var(--amber); }
 .wc-legend .lg-wildcard { background: var(--win); }
-.wc-legend .lg-bubble   { background: #e8c98a; }
-.wc-legend .lg-out      { background: #c3b399; }
+.wc-legend .lg-bubble   { background: var(--loss); }
 
 /* ---- ⑨ 推しコレクション ---- */
 .my-team-frame { margin-bottom: 12px; }
