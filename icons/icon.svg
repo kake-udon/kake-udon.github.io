@@ -12,6 +12,6 @@
   <rect x="54" y="54" width="404" height="404" rx="86" fill="#3a2a1c"/>
   <path d="M 256 92 L 420 256 L 256 420 L 92 256 Z" fill="none" stroke="#d9a441" stroke-width="24" stroke-linejoin="round"/>
   <circle cx="256" cy="256" r="62" fill="#f4ebdc"/>
-  <path d="M 216.32 207.64 Q 244.84 256 216.32 304.36" fill="none" stroke="#c0392b" stroke-width="5.6" stroke-linecap="round"/>
-  <path d="M 295.68 207.64 Q 267.16 256 295.68 304.36" fill="none" stroke="#c0392b" stroke-width="5.6" stroke-linecap="round"/>
+  <path d="M 216.32 207.64 Q 244.84 256 216.32 304.36" fill="none" stroke="#c0392b" stroke-width="8.7" stroke-linecap="round"/>
+  <path d="M 295.68 207.64 Q 267.16 256 295.68 304.36" fill="none" stroke="#c0392b" stroke-width="8.7" stroke-linecap="round"/>
 </svg>
