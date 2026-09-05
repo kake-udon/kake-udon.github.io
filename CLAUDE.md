@@ -52,13 +52,15 @@ js/
   trivia.js       … 豆知識コンテンツ集（ルール・記録/歴史・用語）とランダム抽出
   rules.js        … MLBルール解説画面（カテゴリ別の折りたたみ静的コンテンツ）
   notifications.js … Web Push購読・解除・お気に入りチームIDのSupabase同期
-icons/            … オリジナル生成アイコン（商標不使用）
+icons/            … オリジナル生成アイコン（商標不使用）。icon.svg / icon-maskable.svg が原本で、
+                    icon-192.png・icon-512.png・icon-maskable-512.png はそこから書き出したもの
 supabase/schema.sql … Push購読テーブルのDDL（Supabase SQL Editorで実行）
 scripts/send-notifications.mjs … 毎日夕方JSTのPushダイジェスト送信（GitHub Actions専用・送信ウィンドウ判定つき）
 .github/workflows/notify.yml    … 送信スケジュール（cron）と手動テスト送信（workflow_dispatch）
 ```
 
 ## 実装済み
+- **アプリアイコンの刷新**（2026-09-05）：カードショップ・テーマに合わせ、箔（`--foil`のゴールドグラデーション）の地に濃茶のカード枠、金のダイヤモンド（内野）とクリームのボールを重ねた意匠に変更。原本は`icons/icon.svg`（通常）と`icons/icon-maskable.svg`（maskable）で、PNGはここから書き出す。maskable版はランチャーのマスクで欠けないよう背景を全面に敷き、図柄を中央のセーフゾーン内に収めている。ロゴ・商標は使わず、図形と配色のみで構成する方針は据え置き。
 - **カードショップ・テーマ**（デザイン刷新・2026-08-24）：トレーディングカード店をモチーフにした配色（クリーム紙＋ブラウン＋ゴールド箔）に変更。`css/card-shop-theme.css`が`style.css`の配色トークン（`--bg-night`/`--amber`等のCSS変数）を上書きするだけで、既存HTML/JSを書き換えずに全体の見た目が切り替わる方式。書体はAlfa Slab One（見出し・数値）＋Noto Serif JP（日本語ラベル）＋Roboto Mono（数値・時刻）。デザイン原本は`design_handoff_card_shop/`（Downloads配下、リポジトリ外）。
 - **ホーム**（ロードマップ1、旧称「表紙」、試合カード2列化・2026-08-24）：本日/前日の試合結果をJST基準で表示（お気に入りチームの試合を先頭に並べ替え）。試合カードは半分サイズの2列グリッドで表示し、チーム名は英語略称（`teamShort`）で表示してカード幅に収める（`css/style.css`の`.game-grid`/`.game-card-compact`、ホーム画面専用でalerts.js等の`.scoreboard-list`には影響しない）。お気に入りチーム選択（IndexedDB保存・該当カードをハイライト）、お気に入り選手の今日の成績コーナー（`js/today-stats.js`）、豆知識のランダム表示
 - **順位表**（ロードマップ1、UI見直し済み・2026-08-23、カードショップ・テーマで機能追加・2026-08-24）：画面最上部に全球団の簡易US地図プロット（旧「チーム検索」画面を吸収）。リーグ・地区・PS圏内のみの絞り込み（何も選ばなければ全30球団を表示、条件はAND）を備え、地図の球団タップでチームシート（お気に入り登録可）を開く。PS圏内判定は`teamRecord.wildCardGamesBack`の符号で行う（`hasWildcard`は全球団trueになる構造的フラグのため使用不可、詳細は`standings.js`のコメント参照）。地図の下に地区ごとのブロックを並べ、各ブロックは「ゲーム差ものさし」（`js/gb-ruler.js`）と順位表テーブル（勝敗・勝率・ゲーム差）をセットで表示する。行左端のPS区分の色帯は 地区首位＝金／WC圏内＝緑／当落線上＝赤（圏外は帯なし）で、金と当落線上が同系色で見分けにくかったため色相をはっきり離してある。地区ブロックの下にワイルドカード争い表（当落線を破線で表示、`js/postseason.js`）。チーム名タップでチーム紹介（全画面表示）。旧チーム検索の検索ボックス・地区別簡易リストは重複のため廃止。
