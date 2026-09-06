@@ -1,11 +1,11 @@
-import { getStandings, getPostseasonSchedule, currentSeasonYear } from './api.js';
+import { getStandings, currentSeasonYear } from './api.js';
 import { TEAMS, DIVISIONS, teamColor, teamName } from './teams.js';
 import { openTeamSheet } from './team-sheet.js';
 import { openGameSheet } from './game-sheet.js';
 import { getFavorites } from './db.js';
 import { psClass, renderWildcardCard, buildRaceContext, raceInfo } from './postseason.js';
 import { renderGbRuler } from './gb-ruler.js';
-import { buildBracket, renderBracket, wireBracket, isPostseasonWindow } from './bracket.js';
+import { loadBracket, renderBracket, wireBracket } from './bracket.js';
 
 let cachedRecords = null;
 let teamRecordById = new Map(); // teamId -> teamRecord（絞り込みの判定に使用）
@@ -351,21 +351,15 @@ function switchTab(container, tab) {
   renderTabBar(container);
 }
 
-// ポストシーズンの日程を取得してタブを出す。取得できなくても順位表は使えるようにする
-// （タブが出ないだけで、既存の表示には影響させない）。
+// ポストシーズンの日程を取得してタブを出す。日程が無い時期・取得できなかった場合は
+// loadBracket が null を返すので、タブが出ないだけで順位表の表示には影響しない。
 async function loadPostseasonTab(container) {
-  if (!isPostseasonWindow()) return;
   const season = currentSeasonYear();
-  try {
-    const { games } = await getPostseasonSchedule(season);
-    const bracket = buildBracket(games);
-    if (!bracket.rounds.length) return;
-    bracketData = bracket;
-    bracketSeason = season;
-    renderTabBar(container);
-  } catch (e) {
-    // ポストシーズン日程が取得できない時期・状況ではタブを出さない
-  }
+  const bracket = await loadBracket(season);
+  if (!bracket) return;
+  bracketData = bracket;
+  bracketSeason = season;
+  renderTabBar(container);
 }
 
 export async function renderStandings(container) {

@@ -3,6 +3,7 @@
 import { getGameSummary, getGameLinescore, getGamePlayByPlay, getGameBoxscore, formatJstTime, formatJstDateLabel } from './api.js';
 import { teamName, teamShort, teamColor } from './teams.js';
 import { closeSheet, pushSheetBack } from './sheet-stack.js';
+import { loadBracket, findSeriesForGame, seriesTitleJa, seriesRecordAsOf, isSeriesClincher } from './bracket.js';
 // team-sheet.js とは相互参照になるが、双方とも呼び出しは実行時のみで
 // モジュール評価時に相手を参照しないため循環参照になっても問題ない。
 import { openTeamSheet } from './team-sheet.js';
@@ -219,7 +220,30 @@ function renderMatchupTeam(side, score, isWinner, isFinal) {
   `;
 }
 
-function renderHeader(game) {
+// ポストシーズンの試合には、スコアボードの先頭にシリーズ名と第N戦を出す。
+// その試合でシリーズが決着した場合は「◯◯ シリーズ突破」も添える。
+// series は該当しない試合（レギュラーシーズン等）では null。
+function renderSeriesBanner(series, game) {
+  if (!series) return '';
+  const record = seriesRecordAsOf(series, game);
+  const clincher = isSeriesClincher(series, game)
+    ? (record || []).find((t) => t.id && t.wins >= series.winsNeeded)
+    : null;
+  // 決着した試合では「その試合を終えた時点」の勝敗を出す（現在の勝敗ではない）
+  const counts = (record || []).filter((t) => t.id).map((t) => t.wins);
+  const recordText = counts.length === 2 && (counts[0] || counts[1])
+    ? `${Math.max(...counts)}勝${Math.min(...counts)}敗`
+    : '';
+  return `
+    <div class="game-sheet-series">
+      <span class="game-sheet-series-name">${seriesTitleJa(series, game)}</span>
+      ${recordText ? `<span class="game-sheet-series-record">${recordText}</span>` : ''}
+      ${clincher ? `<span class="series-clinch-tag">${teamShort(clincher.id)} シリーズ突破</span>` : ''}
+    </div>
+  `;
+}
+
+function renderHeader(game, series = null) {
   const away = game.teams.away;
   const home = game.teams.home;
   const isFinal = game.status.abstractGameState === 'Final';
@@ -231,6 +255,7 @@ function renderHeader(game) {
 
   return `
     <div class="game-sheet-header">
+      ${renderSeriesBanner(series, game)}
       <div class="status-pill ${isFinal ? 'final' : started ? 'live' : 'scheduled'}">${statusLabel(game)}</div>
       <div class="game-sheet-date">${formatJstDateLabel(game.gameDate)} ${formatJstTime(game.gameDate)}${!started ? ' 開始' : ''}</div>
       ${game.venue && game.venue.name ? `
@@ -539,7 +564,11 @@ export async function openGameSheet(gamePk) {
     if (!fixed) return; // シートが既に閉じられている場合
 
     const started = game.status.abstractGameState !== 'Preview';
-    const headerHtml = renderHeader(game);
+    // ポストシーズンの試合のときだけシリーズ情報を用意する（レギュラーシーズンでは通信を増やさない）
+    const series = ['F', 'D', 'L', 'W'].includes(game.gameType)
+      ? findSeriesForGame(await loadBracket(), gamePk)
+      : null;
+    const headerHtml = renderHeader(game, series);
 
     if (!started) {
       const awayProbable = game.teams.away.probablePitcher;

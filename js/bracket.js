@@ -8,7 +8,7 @@
 // - シリーズの勝敗数は seriesStatus のような未確認フィールドに頼らず、
 //   各試合の結果（isWinner / スコア）から数える。日程が未確定の枠も表示できるようにする。
 import { LEAGUES, TEAMS, teamName, teamShort, teamColor } from './teams.js';
-import { formatJstTime, formatJstDateLabel, toJstDateString } from './api.js';
+import { getPostseasonSchedule, currentSeasonYear, formatJstTime, formatJstDateLabel, toJstDateString } from './api.js';
 
 // gameType は F=ワイルドカード, D=ディビジョン, L=リーグ優勝決定, W=ワールドシリーズ。
 // winsNeeded は勝ち上がりに必要な勝ち数、defaultGames は最大試合数（日程が未確定のときの既定値）。
@@ -319,6 +319,146 @@ export function wireBracket(container, { onTeam, onGame }) {
   container.querySelectorAll('.series-game-row[data-gamepk]').forEach((el) => {
     bind(el, () => onGame(Number(el.dataset.gamepk)));
   });
+}
+
+// --- 画面をまたいで使う共通処理 ---
+
+// ポストシーズンの日程を取得してシリーズに畳む。日程が無い時期・取れなかった場合は null。
+// ホーム／順位表／試合詳細／お知らせから同じキーで呼ぶため、cachedFetch のキャッシュを共有し、
+// 画面をまたいでも実際の通信は増えない。
+export async function loadBracket(season = currentSeasonYear()) {
+  if (!isPostseasonWindow()) return null;
+  try {
+    const { games } = await getPostseasonSchedule(season);
+    const bracket = buildBracket(games);
+    return bracket.rounds.length ? bracket : null;
+  } catch (e) {
+    return null; // ポストシーズン情報が取れなくても、呼び出し元の本来の表示は続けられるようにする
+  }
+}
+
+export function findSeriesForGame(bracket, gamePk) {
+  if (!bracket) return null;
+  const target = Number(gamePk);
+  for (const { series } of bracket.rounds) {
+    for (const s of series) {
+      if (s.games.some((g) => Number(g.gamePk) === target)) return s;
+    }
+  }
+  return null;
+}
+
+// そのチームが登場する最も後のラウンドのシリーズ（＝現在地）を返す。
+export function findSeriesForTeam(bracket, teamId) {
+  if (!bracket) return null;
+  let found = null;
+  for (const { series } of bracket.rounds) {
+    for (const s of series) {
+      if (s.teams.some((t) => t.id === Number(teamId))) found = s;
+    }
+  }
+  return found;
+}
+
+// ポストシーズン全体で次に行われる試合（移動日の表示に使う）。
+// 決着したシリーズの「必要な場合のみ」の試合は、日程に残っていても行われないので除く。
+export function nextPostseasonGame(bracket, from = new Date()) {
+  if (!bracket) return null;
+  let next = null;
+  for (const { series } of bracket.rounds) {
+    for (const s of series) {
+      if (s.status === 'final') continue;
+      for (const g of s.games) {
+        if (isFinalGame(g) || isCalledOffGame(g)) continue;
+        const t = new Date(g.gameDate);
+        if (t <= from) continue;
+        if (!next || t < new Date(next.gameDate)) next = g;
+      }
+    }
+  }
+  return next;
+}
+
+// その試合を終えた時点でのシリーズ勝敗。過去の試合カードに「現在の」勝敗を出さないために使う。
+// 対象試合がシリーズに無ければ null。
+export function seriesRecordAsOf(series, game) {
+  if (!series || !game) return null;
+  const target = Number(game.gamePk);
+  const wins = new Map();
+  let reached = false;
+  for (const g of series.games) {
+    const winnerId = gameWinnerId(g);
+    if (winnerId) wins.set(winnerId, (wins.get(winnerId) || 0) + 1);
+    if (Number(g.gamePk) === target) { reached = true; break; }
+  }
+  if (!reached) return null;
+  return series.teams.map((t) => ({ id: t.id, wins: t.id ? (wins.get(t.id) || 0) : 0 }));
+}
+
+// その試合でシリーズが決着したか
+export function isSeriesClincher(series, game) {
+  const record = seriesRecordAsOf(series, game);
+  if (!record) return false;
+  return record.some((t) => t.id && t.wins >= series.winsNeeded);
+}
+
+// ホームのコンパクトな試合カード用の1行。「DS 第3戦・1勝1敗」のように短くまとめる。
+export function seriesShortLineJa(series, game) {
+  if (!series || !series.round) return '';
+  const no = Number(game && game.seriesGameNumber) || null;
+  const head = `${series.round.shortJa}${no ? ` 第${no}戦` : ''}`;
+  const record = seriesRecordAsOf(series, game);
+  if (!record) return head;
+  if (isSeriesClincher(series, game)) {
+    const winner = record.find((t) => t.id && t.wins >= series.winsNeeded);
+    return `${head}・${teamShort(winner.id)}突破`;
+  }
+  const counts = record.filter((t) => t.id).map((t) => t.wins);
+  if (counts.length < 2) return head;
+  const hi = Math.max(...counts);
+  const lo = Math.min(...counts);
+  if (hi === 0 && lo === 0) return head;
+  return `${head}・${hi}勝${lo}敗`;
+}
+
+// 試合詳細のスコアボード見出し用。「ア・リーグ ディビジョンシリーズ 第3戦」。
+export function seriesTitleJa(series, game) {
+  if (!series || !series.round) return '';
+  const league = series.gameType === 'W' ? '' : (LEAGUES[series.leagueId] || '');
+  const no = Number(game && game.seriesGameNumber) || null;
+  return [league, series.round.ja, no ? `第${no}戦` : ''].filter(Boolean).join(' ');
+}
+
+// お気に入りチームから見たシリーズの状況（お知らせ画面の見出しに使う）。
+export function seriesTeamStatus(series, teamId) {
+  if (!series) return null;
+  const id = Number(teamId);
+  const me = series.teams.find((t) => t.id === id);
+  if (!me) return null;
+  const opp = series.teams.find((t) => t.id !== id) || { id: null, wins: 0 };
+  const need = series.winsNeeded;
+  const oppName = opp.id ? teamShort(opp.id) : '対戦相手未定';
+  const record = `${me.wins}勝${opp.wins}敗`;
+
+  if (series.status === 'final') {
+    return series.winnerId === id
+      ? { key: 'advanced', label: 'シリーズ突破', detail: `${record}で${oppName}を下しました。` }
+      : { key: 'eliminated', label: '敗退', detail: `${me.wins}勝${opp.wins}敗で${oppName}に敗れました。` };
+  }
+  if (series.status === 'scheduled') {
+    return { key: 'upcoming', label: 'これから開幕', detail: `${oppName}と${series.gamesInSeries}戦${need}勝制で対戦します。` };
+  }
+  const matchPoint = me.wins === need - 1;
+  const facingElimination = opp.wins === need - 1;
+  if (matchPoint && facingElimination) {
+    return { key: 'decider', label: '最終戦', detail: `${record}。次の試合で勝ち上がりが決まります。` };
+  }
+  if (matchPoint) return { key: 'matchpoint', label: '王手', detail: `${record}。あと1勝で勝ち上がりです。` };
+  if (facingElimination) return { key: 'facing', label: '崖っぷち', detail: `${record}。あと1敗で敗退です。` };
+  if (me.wins === opp.wins) return { key: 'even', label: 'タイ', detail: `${record}の五分です。` };
+  return me.wins > opp.wins
+    ? { key: 'lead', label: 'リード', detail: `${record}でリードしています。` }
+    : { key: 'trail', label: 'ビハインド', detail: `${record}で追う展開です。` };
 }
 
 // トーナメント表を出す時期かどうか。ポストシーズンの日程が存在しない時期に

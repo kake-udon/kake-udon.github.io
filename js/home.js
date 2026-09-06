@@ -4,9 +4,12 @@ import { getFavorites } from './db.js';
 import { openGameSheet } from './game-sheet.js';
 import { pickTrivia } from './trivia.js';
 import { renderTodayStats } from './today-stats.js';
+import { loadBracket, findSeriesForGame, nextPostseasonGame, seriesShortLineJa } from './bracket.js';
 
 let favoriteTeamIds = new Set();
 let currentTrivia = null;
+// ポストシーズン中だけ使うシリーズ情報（日程が無い時期は null のまま）
+let bracket = null;
 
 function statusInfo(game) {
   const state = game.status.abstractGameState; // Preview / Live / Final
@@ -43,8 +46,13 @@ function renderGameCard(game) {
     return `<span class="score-digit ${isFinal && !isWin ? 'dim' : ''}">${score}</span>`;
   };
 
+  // ポストシーズンの試合には「DS 第3戦・1勝1敗」のような1行を添える
+  const series = findSeriesForGame(bracket, game.gamePk);
+  const seriesLine = series ? `<div class="game-card-series">${seriesShortLineJa(series, game)}</div>` : '';
+
   return `
     <button class="game-card game-card-compact ${isFav ? 'is-favorite' : ''}" data-gamepk="${game.gamePk}" data-away="${away.team.id}" data-home="${home.team.id}">
+      ${seriesLine}
       <div class="status-row">
         <span class="status-pill ${info.cls}">${info.label}</span>
         <span class="game-time">${hasStarted && !isFinal ? '' : formatJstTime(game.gameDate)}${!hasStarted ? ' 開始' : ''}</span>
@@ -76,9 +84,23 @@ function sortGamesByFavorite(games) {
   return [...favGames, ...otherGames];
 }
 
+// ポストシーズンは試合のない日（移動日）が普通にあるため、
+// 「試合がありません」だけだと不具合に見える。次の試合の日時まで出す。
+function renderNoGamesState() {
+  if (!bracket) return `<div class="empty-state">この日は試合がありません。</div>`;
+  const next = nextPostseasonGame(bracket);
+  if (!next) return `<div class="empty-state">ポストシーズンの全日程が終了しました。</div>`;
+  return `
+    <div class="travel-day-card">
+      <div class="travel-day-title">今日は移動日です</div>
+      <div class="travel-day-next">次の試合は ${formatJstDateLabel(next.gameDate)} ${next.status && next.status.startTimeTBD ? '時間未定' : formatJstTime(next.gameDate)}</div>
+    </div>
+  `;
+}
+
 function renderGameList(games) {
   if (!games.length) {
-    return `<div class="empty-state">この日は試合がありません。</div>`;
+    return renderNoGamesState();
   }
   return `<div class="scoreboard-list game-grid">${sortGamesByFavorite(games).map(renderGameCard).join('')}</div>`;
 }
@@ -123,6 +145,10 @@ export async function renderHome(container) {
 
   const todayJst = toJstDateString();
   const yesterdayJst = addDaysToDateString(todayJst, -1);
+
+  // 試合カードを描く前にシリーズ情報を用意する。日程が無い時期は null のままで、
+  // レギュラーシーズン中の表示はこれまでと変わらない。
+  bracket = await loadBracket();
 
   try {
     const { games, offline } = await getGamesForJstDate(todayJst);

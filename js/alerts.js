@@ -9,6 +9,7 @@ import { teamName, teamShort, teamColor } from './teams.js';
 import { openGameSheet } from './game-sheet.js';
 import { openPlayerSheet } from './player-sheet.js';
 import { isSupported, getPermissionState, getSubscription, enableNotifications, disableNotifications } from './notifications.js';
+import { loadBracket, findSeriesForTeam, seriesTeamStatus, seriesTitleJa } from './bracket.js';
 
 const SCHEDULE_LOOKAHEAD_DAYS = 10;
 
@@ -175,6 +176,52 @@ async function loadTeamSchedules(favTeamIds) {
   return { html: sections.join(''), empty: '' };
 }
 
+// --- ポストシーズン中のお気に入りチームの状況（王手／崖っぷち／敗退など） ---
+// ポストシーズンの日程が無い時期は何も描かないので、レギュラーシーズン中の画面は従来どおり。
+
+const PS_BADGE_CLASS = {
+  advanced: 'is-good', matchpoint: 'is-good', lead: 'is-good',
+  decider: 'is-hot', facing: 'is-hot', eliminated: 'is-out',
+  even: '', trail: '', upcoming: '',
+};
+
+function renderPostseasonTeamCard(teamId, series, status) {
+  const next = series.nextGame;
+  const nextLine = next
+    ? `<div class="ps-status-next" data-gamepk="${next.gamePk}">次戦　${formatJstDateLabel(next.gameDate)} ${next.status && next.status.startTimeTBD ? '時間未定' : formatJstTime(next.gameDate)}</div>`
+    : '';
+  return `
+    <div class="ps-status-card">
+      <div class="ps-status-head">
+        <span class="team-dot" style="background:${teamColor(teamId)}"></span>
+        <span class="ps-status-team">${teamName(teamId)}</span>
+        <span class="ps-status-badge ${PS_BADGE_CLASS[status.key] || ''}">${status.label}</span>
+      </div>
+      <div class="ps-status-series">${seriesTitleJa(series)}</div>
+      <div class="ps-status-detail">${status.detail}</div>
+      ${nextLine}
+    </div>
+  `;
+}
+
+async function loadPostseasonStatus(favTeamIds) {
+  const bracket = await loadBracket();
+  if (!bracket) return { html: '', empty: '' };
+  if (!favTeamIds.length) {
+    return { html: '', empty: 'お気に入りのチームが登録されていません。' };
+  }
+  const cards = favTeamIds.map((teamId) => {
+    const series = findSeriesForTeam(bracket, teamId);
+    if (!series) return '';
+    const status = seriesTeamStatus(series, teamId);
+    return status ? renderPostseasonTeamCard(teamId, series, status) : '';
+  }).filter(Boolean).join('');
+  if (!cards) {
+    return { html: '', empty: 'お気に入りのチームはポストシーズンに進出していません。' };
+  }
+  return { html: cards, empty: '' };
+}
+
 function wireTapTargets(container) {
   container.querySelectorAll('[data-gamepk]').forEach((el) => {
     el.onclick = () => openGameSheet(Number(el.dataset.gamepk));
@@ -222,8 +269,8 @@ async function renderNotificationSection(container, favTeamIds) {
   wrapNow.innerHTML = `
     <div class="notify-toggle-row">
       <div>
-        <div class="notify-toggle-label">毎日18時に試合結果と次戦予定をお知らせ</div>
-        <div class="notify-toggle-sub" id="notify-toggle-sub">${enabled ? '通知は有効です' : 'お気に入りチームの情報をプッシュ通知で受け取れます'}</div>
+        <div class="notify-toggle-label">毎日夕方に試合結果と次戦予定をお知らせ</div>
+        <div class="notify-toggle-sub" id="notify-toggle-sub">${enabled ? '通知は有効です' : 'お気に入りチームの情報をプッシュ通知で受け取れます（ポストシーズン中は15時台にお届けします）'}</div>
       </div>
       <button id="notify-toggle-btn" class="toggle-switch ${enabled ? 'on' : ''}" role="switch" aria-checked="${enabled}" aria-label="通知の有効・無効を切り替え">
         <span class="toggle-knob"></span>
@@ -252,6 +299,10 @@ async function renderNotificationSection(container, favTeamIds) {
 
 export async function renderAlerts(container) {
   container.innerHTML = `
+    <div id="alerts-postseason-wrap" class="pane-hidden">
+      <div class="section-title" style="margin-top:0;">ポストシーズンの状況</div>
+      <div id="alerts-postseason"></div>
+    </div>
     <div class="section-title">通知設定</div>
     <div id="notification-section"><div class="spinner"></div></div>
     <div class="section-title" style="margin-top:22px;">お気に入り投手の先発予定</div>
@@ -269,8 +320,29 @@ export async function renderAlerts(container) {
   renderNotificationSection(container, favTeamIds);
 
   await Promise.all([
+    loadPostseasonSection(container, favTeamIds),
     loadSection(container, 'alerts-pitchers', () => loadPitcherStarts(players)),
     loadSection(container, 'alerts-homeruns', () => loadBatterHomeRuns(players)),
     loadSection(container, 'alerts-schedule', () => loadTeamSchedules(favTeamIds)),
   ]);
+}
+
+// ポストシーズンの状況は、出すものがあるときだけ見出しごと表示する
+// （レギュラーシーズン中に空の見出しが増えないようにするため）。
+async function loadPostseasonSection(container, favTeamIds) {
+  const wrap = container.querySelector('#alerts-postseason-wrap');
+  const target = container.querySelector('#alerts-postseason');
+  if (!wrap || !target) return;
+  try {
+    const { html, empty } = await loadPostseasonStatus(favTeamIds);
+    if (!html && !empty) return; // ポストシーズンの日程が無い時期
+    const wrapNow = container.querySelector('#alerts-postseason-wrap');
+    const targetNow = container.querySelector('#alerts-postseason');
+    if (!wrapNow || !targetNow) return;
+    targetNow.innerHTML = html || `<div class="empty-state">${empty}</div>`;
+    wrapNow.classList.remove('pane-hidden');
+    wireTapTargets(targetNow);
+  } catch (e) {
+    // 取得できなければ何も出さない（他のコーナーの表示は続ける）
+  }
 }

@@ -917,3 +917,137 @@ table.standings-table th:last-child, table.standings-table td:last-child { paddi
   color: var(--ink-brown);
   white-space: nowrap;
 }
+
+/* =========================================================
+   ⑩ ポストシーズン中のホーム・試合詳細・お知らせ
+   ========================================================= */
+
+/* ホームのコンパクトな試合カードに添えるシリーズ状況（「DS 第3戦・1勝1敗」） */
+.game-card.game-card-compact .game-card-series {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  color: var(--ink-brown);
+  background: rgba(217, 164, 65, 0.18);
+  border-radius: 3px;
+  padding: 2px 6px;
+  margin-bottom: 6px;
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 移動日（ポストシーズンで試合が無い日） */
+.travel-day-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--amber);
+  border-radius: var(--radius-md);
+  box-shadow: 0 3px 0 var(--line);
+  padding: 14px 15px;
+}
+.travel-day-title {
+  font-family: 'Alfa Slab One', 'Noto Serif JP', serif;
+  font-size: 15px;
+  color: var(--ink-brown);
+  margin-bottom: 6px;
+}
+.travel-day-next {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 13px;
+  color: var(--chalk-dim);
+}
+
+/* 試合詳細：スコアボード先頭のシリーズ表記 */
+.game-sheet-series {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--line);
+}
+.game-sheet-series-name {
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ink-brown);
+}
+.game-sheet-series-record {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 12px;
+  color: var(--chalk-dim);
+}
+.series-clinch-tag {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 11px;
+  color: var(--chalk);
+  background: var(--amber);
+  border-radius: 3px;
+  padding: 2px 7px;
+}
+
+/* お知らせ：お気に入りチームのポストシーズン状況 */
+.ps-status-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  box-shadow: 0 3px 0 var(--line);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+.ps-status-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.ps-status-team {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ps-status-badge {
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--chalk-dim);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+.ps-status-badge.is-good { color: #fff; background: var(--win); border-color: var(--win); }
+.ps-status-badge.is-hot { color: #fff; background: var(--loss); border-color: var(--loss); }
+.ps-status-badge.is-out { color: var(--chalk-dim); background: var(--bg-panel-2); }
+.ps-status-series {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 12px;
+  color: var(--ink-brown);
+}
+.ps-status-detail {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--chalk);
+  margin-top: 2px;
+}
+.ps-status-next {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+  font-family: 'Roboto Mono', monospace;
+  font-size: 12px;
+  color: var(--win);
+  cursor: pointer;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+}
+.ps-status-next:active { background: var(--press); }
