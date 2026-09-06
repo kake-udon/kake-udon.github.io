@@ -819,3 +819,101 @@
   color: var(--chalk-dim);
   margin: 4px 2px 8px;
 }
+
+/* =========================================================
+   ⑨ ペナントレース最終盤（マジックナンバー・残り試合・ホームからの導線）
+   ========================================================= */
+
+/* 順位表の行に出すバッジ。既存 .clinch-tag（金の塗り）を土台に種別で塗り分ける */
+.clinch-tag.is-clinched { background: var(--amber); color: var(--chalk); }
+.clinch-tag.is-magic {
+  background: transparent;
+  border: 1px solid var(--ink-brown);
+  color: var(--ink-brown);
+  font-family: 'Roboto Mono', monospace;
+  font-weight: 700;
+}
+.clinch-tag.is-elim-num {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--chalk-dim);
+  font-family: 'Roboto Mono', monospace;
+}
+.clinch-tag.is-eliminated { background: var(--loss); color: #fff; }
+
+/* 敗退が決まった行は控えめにする（順位そのものは読めるよう文字は消さない） */
+table.standings-table tbody tr.is-eliminated td { opacity: 0.62; }
+
+/* 「残」列が増えたぶん数値列を詰め、チーム名に使える幅を従来より広く保つ
+   （スマホ幅での実測：従来5列で236px → この指定つきの6列で244px） */
+table.standings-table th:not(:first-child),
+table.standings-table td:not(:first-child) {
+  font-size: 13px;
+  padding-left: 3px;
+  padding-right: 3px;
+}
+table.standings-table th:first-child, table.standings-table td:first-child { padding-left: 2px; }
+table.standings-table th:last-child, table.standings-table td:last-child { padding-right: 2px; }
+/* 名前が折り返した場合でも行が間延びしないようにする */
+.standings-table .team-cell { line-height: 1.3; }
+
+.race-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 2px 2px 12px;
+  font-family: 'Noto Serif JP', serif;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--chalk-dim);
+}
+.race-legend b { color: var(--ink-brown); font-family: 'Roboto Mono', monospace; }
+.race-legend em { font-style: normal; flex-basis: 100%; }
+
+/* ワイルドカード争いカード：敗退が決まったチーム */
+.wc-row.is-eliminated { opacity: 0.55; }
+.wc-out-tag {
+  margin-left: 6px;
+  font-family: 'Noto Serif JP', serif;
+  font-size: 10px;
+  color: #fff;
+  background: var(--loss);
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+
+/* ホーム最上部から順位表への導線 */
+.race-link-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  margin: 2px 0 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--amber);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+  box-shadow: 0 3px 0 var(--line);
+  cursor: pointer;
+  text-align: left;
+}
+.race-link-bar:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--line); }
+.race-link-text {
+  flex: 1;
+  min-width: 0;
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--chalk);
+}
+.race-link-cta {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-family: 'Noto Serif JP', serif;
+  font-size: 12px;
+  color: var(--ink-brown);
+  white-space: nowrap;
+}

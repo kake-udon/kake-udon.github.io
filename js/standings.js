@@ -3,7 +3,7 @@ import { TEAMS, DIVISIONS, teamColor, teamName } from './teams.js';
 import { openTeamSheet } from './team-sheet.js';
 import { openGameSheet } from './game-sheet.js';
 import { getFavorites } from './db.js';
-import { psClass, renderWildcardCard } from './postseason.js';
+import { psClass, renderWildcardCard, buildRaceContext, raceInfo } from './postseason.js';
 import { renderGbRuler } from './gb-ruler.js';
 import { buildBracket, renderBracket, wireBracket, isPostseasonWindow } from './bracket.js';
 
@@ -192,35 +192,53 @@ function refreshFiltered(container) {
   renderBody(container);
 }
 
-function clinchTag(team) {
-  if (team.clinched) return `<span class="clinch-tag">確定</span>`;
-  return '';
+// 「あと何勝で決まるか／もう届かないか」のバッジ。判定は postseason.js の raceInfo が持ち、
+// ここでは表示だけを組み立てる。M・Eの意味は順位表の先頭に凡例を添える。
+function raceTag(info) {
+  if (!info || !info.kind) return '';
+  if (info.kind === 'clinched') {
+    return `<span class="clinch-tag is-clinched" title="${info.clinch.label}が確定">${info.clinch.label}</span>`;
+  }
+  if (info.kind === 'eliminated') {
+    return `<span class="clinch-tag is-eliminated" title="ポストシーズン進出の可能性がなくなりました">敗退</span>`;
+  }
+  if (info.kind === 'magic') {
+    const title = info.scope === 'division'
+      ? `地区優勝のマジックナンバー：自チームの勝ちと2位の負けが合計${info.value}で優勝が決まります（目安）`
+      : `ワイルドカード確保のマジックナンバー：自チームの勝ちと圏外首位の負けが合計${info.value}で枠が決まります（目安）`;
+    return `<span class="clinch-tag is-magic" title="${title}">M${info.value}</span>`;
+  }
+  return `<span class="clinch-tag is-elim-num" title="ポストシーズン進出の可能性が消えるまであと${info.value}：自チームの負けとライバルの勝ちの合計（目安）">E${info.value}</span>`;
 }
 
 // records は絞り込み後のteamRecordの配列（0件になった球団は呼び出し側で除外済み）
-function renderDivisionTable(records) {
+function renderDivisionTable(records, ctx) {
   const sorted = [...records].sort((a, b) => a.divisionRank - b.divisionRank);
-  const rows = sorted.map((r) => `
-    <tr data-teamid="${r.team.id}" class="${psClass(r)}">
+  const rows = sorted.map((r) => {
+    const info = raceInfo(ctx, r);
+    return `
+    <tr data-teamid="${r.team.id}" class="${psClass(r)} ${info.kind === 'eliminated' ? 'is-eliminated' : ''}">
       <td>
         <div class="team-cell">
           <span class="rank-num">${r.divisionRank}</span>
           <span class="team-dot" style="background:${teamColor(r.team.id)}"></span>
           ${teamName(r.team.id)}
-          ${clinchTag(r)}
+          ${raceTag(info)}
         </div>
       </td>
       <td>${r.wins}</td>
       <td>${r.losses}</td>
       <td>${r.winningPercentage ?? '-'}</td>
       <td>${r.gamesBack === '-' || !r.gamesBack ? '-' : r.gamesBack}</td>
+      <td>${info.remaining ?? '-'}</td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
 
   return `
     <table class="standings-table">
       <thead>
-        <tr><th>チーム</th><th>勝</th><th>敗</th><th>勝率</th><th>差</th></tr>
+        <tr><th>チーム</th><th>勝</th><th>敗</th><th>勝率</th><th>差</th><th title="残り試合数（目安）">残</th></tr>
       </thead>
       <tbody>${rows}</tbody>
     </table>
@@ -244,6 +262,10 @@ function renderBody(container) {
     body.innerHTML = `<div class="empty-state">現在、順位表データがありません。シーズン開幕前後は表示できない場合があります。</div>`;
     return;
   }
+  // マジックナンバー・敗退マジックは絞り込み前の全球団から求める
+  // （リーグや地区で絞っても数字が変わらないようにするため）
+  const raceCtx = buildRaceContext(cachedRecords);
+
   let isFirstBlock = true;
   const blocks = ALL_DIVISION_IDS.map((divId) => {
     const rec = cachedRecords.find((r) => r.division && r.division.id === divId);
@@ -257,13 +279,24 @@ function renderBody(container) {
       <div class="division-block">
         <div class="division-header">${DIVISIONS[divId]}</div>
         ${renderGbRuler(DIVISIONS[divId], filteredTeams, withNote)}
-        ${renderDivisionTable(filteredTeams)}
+        ${renderDivisionTable(filteredTeams, raceCtx)}
       </div>
     `;
   }).join('');
 
+  const legend = `
+    <div class="race-legend">
+      <span><b>M</b>＝マジックナンバー（地区優勝・WC確保まで）</span>
+      <span><b>E</b>＝ポストシーズン進出の可能性が消えるまでの数</span>
+      <span><b>残</b>＝残り試合数</span>
+      <em>いずれも勝敗数から求めた目安です。</em>
+    </div>
+  `;
+
   body.innerHTML = blocks
-    ? blocks + renderWildcardCard(cachedRecords, 104, 'ナ・リーグ') + renderWildcardCard(cachedRecords, 103, 'ア・リーグ')
+    ? legend + blocks
+      + renderWildcardCard(cachedRecords, 104, 'ナ・リーグ', raceCtx)
+      + renderWildcardCard(cachedRecords, 103, 'ア・リーグ', raceCtx)
     : `<div class="empty-state">条件に一致するチームがありません。</div>`;
   wireInteractions(container);
   body.querySelectorAll('.wc-row[data-teamid], .gb-row[data-teamid]').forEach((row) => {

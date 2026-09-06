@@ -92,6 +92,12 @@ export async function renderHome(container) {
   await loadFavorites();
 
   container.innerHTML = `
+    <button class="race-link-bar" id="go-standings">
+      <span class="race-link-text">優勝争い・ポストシーズン</span>
+      <span class="race-link-cta">順位表を見る
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m10 6 6 6-6 6"/></svg>
+      </span>
+    </button>
     <div class="section-title">豆知識
       <button id="trivia-refresh" class="trivia-refresh-btn" aria-label="別の豆知識を見る">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.6-6.36"/><path d="M21 4v5h-5"/></svg>
@@ -112,6 +118,7 @@ export async function renderHome(container) {
 
   wireGameCardTaps(container);
   wireTriviaRefresh(container);
+  wireStandingsLink(container);
   renderTodayStats(container.querySelector('#today-stats-section'));
 
   const todayJst = toJstDateString();
@@ -157,6 +164,17 @@ function renderTriviaCard() {
       ${currentTrivia.text}
     </div>
   `;
+}
+
+// ホームから順位表へ移る導線。app.js の navigate を直接呼ぶと循環インポートになるため、
+// ボトムナビの該当ボタンを押したことにして画面遷移させる。
+function wireStandingsLink(container) {
+  const btn = container.querySelector('#go-standings');
+  if (!btn) return;
+  btn.onclick = () => {
+    const navBtn = document.querySelector('.nav-btn[data-route="standings"]');
+    if (navBtn) navBtn.click();
+  };
 }
 
 function wireTriviaRefresh(container) {
