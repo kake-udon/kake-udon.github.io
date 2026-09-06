@@ -1193,3 +1193,6 @@ table.standings-table th:last-child, table.standings-table td:last-child { paddi
   padding: 6px 10px;
   margin: 8px 0 2px;
 }
+
+/* 選手検索の「日本人選手」クイックフィルター */
+.search-filter-row { margin: 8px 0 4px; }

@@ -8,7 +8,18 @@ import { clearSheetStack } from './sheet-stack.js';
 
 const TITLES = { home: 'ホーム', standings: '順位表', 'player-search': '選手検索', collection: '推しコレクション', alerts: 'お知らせ', rules: 'ルール解説' };
 
+// 現在表示中の画面。hashchange を受けたときに「もう表示済みの画面か」を判定して、
+// navigate() 自身による hash の書き換えで再描画が走るのを防ぐ。
+let currentRoute = null;
+
+// URLのハッシュから画面名を取り出す。知らない値は home に倒す。
+function routeFromHash() {
+  const route = (location.hash || '#home').replace('#', '');
+  return TITLES[route] ? route : 'home';
+}
+
 async function navigate(route) {
+  currentRoute = route;
   // 画面を切り替えるときは開いているシートを閉じ、シートの戻り先も破棄する
   const sheetRoot = document.getElementById('sheet-root');
   if (sheetRoot) sheetRoot.innerHTML = '';
@@ -45,12 +56,25 @@ async function navigate(route) {
     el.classList.add('active');
     await renderRules(el);
   }
-  location.hash = route;
+  // すでに同じハッシュなら書き換えない（端末の戻る操作で来たときに履歴を増やさないため）
+  if (location.hash !== `#${route}`) location.hash = route;
 }
 
 function initNav() {
   document.querySelectorAll('.nav-btn').forEach((btn) => {
     btn.addEventListener('click', () => navigate(btn.dataset.route));
+  });
+}
+
+// 端末の「戻る」「進む」に追従する。
+// navigate() が location.hash を書き換えて履歴を積むため、これを監視していないと
+// 戻ってもURLだけ変わって画面が残り、続けて戻るとアプリごと閉じてしまう。
+// navigate() 自身の書き換えでも hashchange は飛ぶので、currentRoute と同じなら何もしない。
+function initHistory() {
+  window.addEventListener('hashchange', () => {
+    const route = routeFromHash();
+    if (route === currentRoute) return;
+    navigate(route);
   });
 }
 
@@ -77,12 +101,16 @@ function registerServiceWorker() {
 
 function init() {
   initNav();
+  initHistory();
   updateClock();
   setInterval(updateClock, 30 * 1000);
   registerServiceWorker();
 
-  const initialRoute = (location.hash || '#home').replace('#', '');
-  navigate(TITLES[initialRoute] ? initialRoute : 'home');
+  // 初回だけはハッシュを「積む」のではなく「置き換える」。
+  // そうしないと、ハッシュ無しで開いた直後に戻る操作をしたとき、画面が変わらない
+  // 空の履歴エントリを1つ踏むことになる（replaceState では hashchange は飛ばない）。
+  if (!location.hash) history.replaceState(null, '', `#${routeFromHash()}`);
+  navigate(routeFromHash());
 }
 
 init();
