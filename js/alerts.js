@@ -269,8 +269,8 @@ async function renderNotificationSection(container, favTeamIds) {
   wrapNow.innerHTML = `
     <div class="notify-toggle-row">
       <div>
-        <div class="notify-toggle-label">毎日夕方に試合結果と次戦予定をお知らせ</div>
-        <div class="notify-toggle-sub" id="notify-toggle-sub">${enabled ? '通知は有効です' : 'お気に入りチームの情報をプッシュ通知で受け取れます（ポストシーズン中は15時台にお届けします）'}</div>
+        <div class="notify-toggle-label">毎日15時台に試合結果と次戦予定をお知らせ</div>
+        <div class="notify-toggle-sub" id="notify-toggle-sub">${enabled ? '通知は有効です' : 'お気に入りチームの情報をプッシュ通知で受け取れます'}</div>
       </div>
       <button id="notify-toggle-btn" class="toggle-switch ${enabled ? 'on' : ''}" role="switch" aria-checked="${enabled}" aria-label="通知の有効・無効を切り替え">
         <span class="toggle-knob"></span>

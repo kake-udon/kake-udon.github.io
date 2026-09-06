@@ -1,4 +1,4 @@
-// GitHub Actions専用スクリプト：毎日夕方(JST)に、お気に入りチームの試合結果と次戦予定を
+// GitHub Actions専用スクリプト：毎日15時台(JST)に、お気に入りチームの試合結果と次戦予定を
 // Web Pushダイジェストとして送信する。Node単体で完結させるため、js/db.js（IndexedDB依存）は使わず、
 // JST日付計算のみ api.js と同じロジックをここで小さく再実装している。
 // クライアント側（js/*.js）はブラウザ専用のバンドラーなしES Modulesのままで、この分離を保つこと。
@@ -9,16 +9,17 @@
 // そこでワークフロー側は複数回起動し、このスクリプトが「JSTの送信ウィンドウ内か」を
 // 判定して、ウィンドウ外に遅延した回は送信せず次の回に委ねる。これにより
 //   ・深夜/翌朝に通知が届く
-//   ・日付をまたいだ実行が last_notified_date を翌日で埋め、翌日夕方の回が丸ごとスキップされる
+//   ・日付をまたいだ実行が last_notified_date を翌日で埋め、翌日の回が丸ごとスキップされる
 // の両方を防ぐ。手動テスト（workflow_dispatchのforce）ではウィンドウ判定を無視する。
 // cronの時刻だけを信用する実装に戻さないこと。
 //
-// 【ポストシーズン中の送信時刻】
-// ポストシーズンは試合が日本時間の朝〜昼に終わるため、夕方18〜21時のダイジェストでは
-// 「半日前に終わった試合」を知らせることになる。そこで送信ウィンドウ判定の仕組みはそのままに、
-// ポストシーズン期間だけウィンドウを15:00〜17:59へ前倒しする。ワークフロー側は昼過ぎと夕方の
-// 両方の時間帯で起動しておき、その日にどちらを使うかはこのスクリプトが日付から決める
-// （ポストシーズンの開始・終了に合わせてcronを編集する必要が無いようにするため）。
+// 【送信時刻を15:00〜17:59にしている理由】
+// MLBの試合は日本時間の朝〜昼に終わる（レギュラーシーズンで最も遅い西海岸のナイターでも
+// 14:30頃、ポストシーズンはさらに早い）。夕方18時台に送ると「半日前に終わった試合」を
+// 知らせることになるため、結果が出そろう15時台からのウィンドウに統一している。
+// レギュラーシーズンとポストシーズンで時間帯を分けると設定が二重になるので、年間を通して
+// 同じウィンドウを使う。時間帯を変えたい場合は NOTIFY_WINDOW_START_HOUR /
+// NOTIFY_WINDOW_END_HOUR と notify.yml の cron を合わせて調整すること。
 import webpush from 'web-push';
 import { TEAMS, teamName, teamShort } from '../js/teams.js';
 
@@ -29,16 +30,10 @@ const VAPID_PRIVATE_KEY = requireEnv('VAPID_PRIVATE_KEY');
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'https://kake-udon.github.io';
 const FORCE_SEND = process.env.FORCE_SEND === 'true';
 
-// 送信ウィンドウ（JST、開始は以上・終了は未満）。
-// 既定はレギュラーシーズン18:00〜20:59／ポストシーズン15:00〜17:59。
+// 送信ウィンドウ（JST、開始は以上・終了は未満）。既定は15:00〜17:59で、年間を通して同じ。
 // 環境変数を設定した場合はそちらが優先される（手元での検証・臨時の変更用）。
-const ENV_WINDOW_START_HOUR = process.env.NOTIFY_WINDOW_START_HOUR;
-const ENV_WINDOW_END_HOUR = process.env.NOTIFY_WINDOW_END_HOUR;
-const REGULAR_WINDOW = { start: 18, end: 21 };
-const POSTSEASON_WINDOW = { start: 15, end: 18 };
-// ポストシーズン期間（JSTの月日で判定）。ワイルドカードシリーズの開幕前から余裕を取っている。
-const POSTSEASON_START_MMDD = '09-28';
-const POSTSEASON_END_MMDD = '11-20';
+const WINDOW_START_HOUR = Number(process.env.NOTIFY_WINDOW_START_HOUR ?? 15);
+const WINDOW_END_HOUR = Number(process.env.NOTIFY_WINDOW_END_HOUR ?? 18);
 // Push の有効期限（秒）。配信が遅れた通知が翌朝に届くのを防ぐため、ウィンドウを過ぎたら破棄させる。
 const PUSH_TTL_SECONDS = 4 * 60 * 60;
 
@@ -70,26 +65,12 @@ function jstHour(date = new Date()) {
   const fmt = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Tokyo', hour: '2-digit', hourCycle: 'h23' });
   return Number(fmt.format(date));
 }
-function isPostseasonPeriod(date = new Date()) {
-  const md = toJstDateString(date).slice(5); // 'MM-DD'
-  return md >= POSTSEASON_START_MMDD && md <= POSTSEASON_END_MMDD;
-}
-
-// その日に使う送信ウィンドウ。ポストシーズン期間だけ昼過ぎに前倒しする。
-function sendWindowFor(date = new Date()) {
-  const base = isPostseasonPeriod(date) ? POSTSEASON_WINDOW : REGULAR_WINDOW;
-  const start = ENV_WINDOW_START_HOUR ? Number(ENV_WINDOW_START_HOUR) : base.start;
-  const end = ENV_WINDOW_END_HOUR ? Number(ENV_WINDOW_END_HOUR) : base.end;
-  return { start, end };
-}
-
-// 実行時刻（JST）が送信ウィンドウ内かどうか。どちらのウィンドウも同じJST日の中に収まるので、
+// 実行時刻（JST）が送信ウィンドウ内かどうか。ウィンドウは同じJST日の中に収まるので、
 // ウィンドウ内であれば「今日」は必ず送信対象日と一致し、last_notified_date による
 // 重複ガードも日付ズレを起こさない。
 function isWithinSendWindow(date = new Date()) {
-  const { start, end } = sendWindowFor(date);
   const hour = jstHour(date);
-  return hour >= start && hour < end;
+  return hour >= WINDOW_START_HOUR && hour < WINDOW_END_HOUR;
 }
 function formatJstDateTime(isoString) {
   return new Intl.DateTimeFormat('ja-JP', {
@@ -220,12 +201,9 @@ async function sendPush(sub, payload) {
 async function main() {
   const now = new Date();
   if (!FORCE_SEND && !isWithinSendWindow(now)) {
-    // ここに来るのは「その日のウィンドウに当たらない時間帯のcron」か、大きく遅延した回。
-    // どちらも送信せず、同日の後続の回（または翌日）に委ねる。
-    const { start, end } = sendWindowFor(now);
+    // ここに来るのはスケジュール実行が大きく遅延した回。送信せず、同日の後続の回（または翌日）に委ねる。
     console.log(
-      `送信ウィンドウ外のためスキップします（現在 ${jstHour(now)}時JST / 本日のウィンドウ ${start}:00〜${end - 1}:59 JST`
-      + `${isPostseasonPeriod(now) ? '・ポストシーズン' : ''}）`
+      `送信ウィンドウ外のためスキップします（現在 ${jstHour(now)}時JST / ウィンドウ ${WINDOW_START_HOUR}:00〜${WINDOW_END_HOUR - 1}:59 JST）`
     );
     return;
   }

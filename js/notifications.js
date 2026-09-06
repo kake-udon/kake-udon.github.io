@@ -1,5 +1,5 @@
 // Web Push通知：購読・解除・お気に入りチームIDの同期を行う
-// 毎日夕方（JST。ポストシーズン中は15時台）のダイジェスト送信はGitHub Actions側（scripts/send-notifications.mjs）が担当し、
+// 毎日15時台（JST）のダイジェスト送信はGitHub Actions側（scripts/send-notifications.mjs）が担当し、
 // このモジュールはブラウザ側で購読情報をSupabaseに登録・更新するところまでを受け持つ。
 //
 // VAPID公開鍵・Supabase URL・Supabase anonキーはいずれも「公開されて問題ない値」。
