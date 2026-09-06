@@ -139,6 +139,27 @@ export async function getTeamScheduleByJstMonth(teamId, year, month) {
   return { byDate, fromCache, offline };
 }
 
+// --- ポストシーズン日程 ---
+
+// ポストシーズン（ワイルドカード〜ワールドシリーズ）の全日程を1リクエストで取得する。
+// シリーズごとに追加取得はせず、この一覧を js/bracket.js 側でシリーズに畳む。
+// hydrate は既存の /schedule 呼び出しで実績のある team,linescore,decisions のみに留めている。
+// （シリーズ勝敗の hydrate=seriesStatus は実レスポンスを確認できていないため使わず、
+//   勝敗は各試合の結果から自前で数える。確認が取れたら補助表示として足せる。）
+export async function getPostseasonSchedule(season) {
+  const url = `${BASE}/schedule/postseason?sportId=1&season=${season}&hydrate=team,linescore,decisions`;
+  const cacheKey = `postseason-schedule:${season}`;
+  const { data, fromCache, offline } = await cachedFetch(cacheKey, url);
+  const games = [];
+  for (const dateBlock of data.dates || []) {
+    for (const game of dateBlock.games || []) {
+      games.push(game);
+    }
+  }
+  games.sort((a, b) => new Date(a.gameDate) - new Date(b.gameDate));
+  return { games, fromCache, offline };
+}
+
 // --- 順位表取得 ---
 
 export async function getStandings(season) {

@@ -615,3 +615,207 @@
 .profile-row:last-child { border-bottom: none; }
 .profile-row span { color: var(--chalk-dim); flex-shrink: 0; }
 .profile-row b { font-weight: 600; text-align: right; }
+
+/* =========================================================
+   ⑧ ポストシーズン：順位表画面のタブとトーナメント表
+   （js/bracket.js 用。ボトムナビを増やさず順位表画面の上部で切り替える）
+   ========================================================= */
+.ps-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 4px 0 14px;
+  border-bottom: 2px solid var(--line);
+}
+.ps-tab {
+  flex: 1;
+  min-height: 44px;
+  padding: 10px 6px;
+  margin-bottom: -2px;
+  border: none;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  color: var(--chalk-dim);
+  cursor: pointer;
+}
+.ps-tab.active { color: var(--ink-brown); border-bottom-color: var(--amber); }
+.ps-tab:active { background: var(--press); }
+
+/* タブで隠す側のペイン（display:none 相当。JSからクラスの付け外しで切り替える） */
+.pane-hidden { display: none; }
+
+.bracket-round { margin-bottom: 18px; }
+.bracket-round-head {
+  font-family: 'Alfa Slab One', 'Noto Serif JP', serif;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  color: var(--ink-brown);
+  margin: 18px 2px 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.bracket-round-head .count {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 11px;
+  color: var(--chalk-dim);
+}
+
+.series-foil { margin-bottom: 14px; }
+.series-foil > .series-card { margin-bottom: 0; border: none; box-shadow: none; }
+.series-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  box-shadow: 0 3px 0 var(--line);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.series-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+.series-title {
+  flex: 1;
+  min-width: 0;
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ink-brown);
+}
+.series-badge {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--chalk-dim);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+.series-badge.is-live { color: var(--win); border-color: var(--win); }
+.series-badge.is-final { color: var(--ink-brown); border-color: var(--amber); background: rgba(217, 164, 65, 0.16); }
+
+.series-team-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--line);
+  cursor: pointer;
+}
+.series-team-row:active { background: var(--press); }
+.series-team-row.is-tbd { cursor: default; color: var(--chalk-dim); font-size: 13px; }
+.series-team-row.is-out { opacity: 0.55; }
+.series-team-abbr {
+  font-family: 'Alfa Slab One', serif;
+  font-size: 13px;
+  width: 42px;
+  flex-shrink: 0;
+}
+.series-team-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.series-wins {
+  font-family: 'Alfa Slab One', serif;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--chalk-dim);
+  width: 24px;
+  text-align: right;
+}
+.series-team-row.is-winner .series-wins { color: var(--ink-brown); }
+.series-team-row.is-winner .series-team-name { font-weight: 700; }
+
+.series-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding-top: 9px;
+  font-family: 'Noto Serif JP', serif;
+  font-size: 13px;
+  color: var(--ink-brown);
+}
+.series-format {
+  margin-left: auto;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 10px;
+  color: var(--chalk-dim);
+  white-space: nowrap;
+}
+.series-next {
+  margin-top: 6px;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 12px;
+  color: var(--win);
+}
+
+.series-games {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.series-game-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 4px 0;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.series-game-row:active { background: var(--press); }
+.series-game-no {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 12px;
+  color: var(--chalk-dim);
+  width: 46px;
+  flex-shrink: 0;
+}
+.series-game-when {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 12px;
+  color: var(--chalk-dim);
+}
+.series-game-score {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 13px;
+  color: var(--chalk-dim);
+}
+.series-game-score em { font-style: normal; }
+.series-game-score em.is-win { color: var(--ink-brown); font-weight: 700; }
+.series-game-score i { font-style: normal; color: #c3b399; }
+.series-game-note { font-family: 'Noto Serif JP', serif; font-size: 12px; color: var(--loss); }
+.series-game-if {
+  margin-left: auto;
+  font-family: 'Noto Serif JP', serif;
+  font-size: 10px;
+  color: var(--chalk-dim);
+  border: 1px dashed var(--line);
+  border-radius: 999px;
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+
+.bracket-note {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--chalk-dim);
+  margin: 4px 2px 8px;
+}

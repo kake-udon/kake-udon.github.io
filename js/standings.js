@@ -1,13 +1,20 @@
-import { getStandings, currentSeasonYear } from './api.js';
+import { getStandings, getPostseasonSchedule, currentSeasonYear } from './api.js';
 import { TEAMS, DIVISIONS, teamColor, teamName } from './teams.js';
 import { openTeamSheet } from './team-sheet.js';
+import { openGameSheet } from './game-sheet.js';
 import { getFavorites } from './db.js';
 import { psClass, renderWildcardCard } from './postseason.js';
 import { renderGbRuler } from './gb-ruler.js';
+import { buildBracket, renderBracket, wireBracket, isPostseasonWindow } from './bracket.js';
 
 let cachedRecords = null;
 let teamRecordById = new Map(); // teamId -> teamRecord（絞り込みの判定に使用）
 let favoriteTeamIds = new Set();
+
+// ポストシーズン用タブ（'standings' | 'bracket'）。日程が存在する時期だけタブ自体を出す。
+let activeTab = 'standings';
+let bracketData = null;
+let bracketSeason = null;
 
 // 絞り込み状態（球団マップ・下部の順位表テーブルで共通。何も選択しなければ全チームを表示）
 let mapLeagueFilter = null; // null | 103 | 104
@@ -270,18 +277,85 @@ function renderBody(container) {
   });
 }
 
+// --- ポストシーズン（トーナメント表）タブ ---
+// ボトムナビは既に6つあり7つ目を足すと1つあたりが狭くなるため、順位表画面の上部にタブを置いて
+// 「順位表」と「トーナメント」を切り替える。ポストシーズンの日程が無い時期はタブ自体を出さない。
+
+function renderTabBar(container) {
+  const bar = container.querySelector('#ps-tab-bar');
+  if (!bar) return;
+  if (!bracketData) {
+    bar.innerHTML = '';
+    return;
+  }
+  const tabs = [
+    { key: 'standings', label: '順位表' },
+    { key: 'bracket', label: 'トーナメント' },
+  ].map((t) => `<button class="ps-tab ${activeTab === t.key ? 'active' : ''}" data-tab="${t.key}" role="tab" aria-selected="${activeTab === t.key}">${t.label}</button>`).join('');
+  bar.innerHTML = `<div class="ps-tabs" role="tablist">${tabs}</div>`;
+  bar.querySelectorAll('.ps-tab').forEach((btn) => {
+    btn.onclick = () => switchTab(container, btn.dataset.tab);
+  });
+}
+
+function renderBracketPane(container) {
+  const pane = container.querySelector('#bracket-pane');
+  if (!pane || !bracketData) return;
+  pane.innerHTML = renderBracket(bracketData, bracketSeason);
+  wireBracket(pane, {
+    onTeam: (teamId) => openTeamSheet(teamId),
+    onGame: (gamePk) => openGameSheet(gamePk),
+  });
+}
+
+function switchTab(container, tab) {
+  activeTab = tab;
+  const standingsPane = container.querySelector('#standings-pane');
+  const bracketPane = container.querySelector('#bracket-pane');
+  if (standingsPane) standingsPane.classList.toggle('pane-hidden', tab !== 'standings');
+  if (bracketPane) bracketPane.classList.toggle('pane-hidden', tab !== 'bracket');
+  if (tab === 'bracket') renderBracketPane(container);
+  renderTabBar(container);
+}
+
+// ポストシーズンの日程を取得してタブを出す。取得できなくても順位表は使えるようにする
+// （タブが出ないだけで、既存の表示には影響させない）。
+async function loadPostseasonTab(container) {
+  if (!isPostseasonWindow()) return;
+  const season = currentSeasonYear();
+  try {
+    const { games } = await getPostseasonSchedule(season);
+    const bracket = buildBracket(games);
+    if (!bracket.rounds.length) return;
+    bracketData = bracket;
+    bracketSeason = season;
+    renderTabBar(container);
+  } catch (e) {
+    // ポストシーズン日程が取得できない時期・状況ではタブを出さない
+  }
+}
+
 export async function renderStandings(container) {
   await loadFavorites();
+  // 画面を開き直したときは必ず順位表タブから始める（前回どのタブにいたかは持ち越さない）
+  activeTab = 'standings';
+  bracketData = null;
 
   container.innerHTML = `
-    <div class="section-title">球団マップ<span class="count">全30球団</span></div>
-    ${renderMap()}
-    ${renderMapFilters()}
-    <div id="standings-body"><div class="spinner"></div></div>
+    <div id="ps-tab-bar"></div>
+    <div id="standings-pane">
+      <div class="section-title">球団マップ<span class="count">全30球団</span></div>
+      ${renderMap()}
+      ${renderMapFilters()}
+      <div id="standings-body"><div class="spinner"></div></div>
+    </div>
+    <div id="bracket-pane" class="pane-hidden"></div>
   `;
   wireInteractions(container);
   wireMapTapTargets(container);
   wireMapFilters(container);
+  // 順位表の描画を待たせないよう、ポストシーズン日程の取得は待たずに走らせる
+  loadPostseasonTab(container);
 
   try {
     const { data, offline } = await getStandings(currentSeasonYear());
