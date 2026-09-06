@@ -151,10 +151,28 @@ function outsJa(outs) {
   return `${outs}アウト`;
 }
 
+// 延長戦のタイブレーク（各イニングを無死二塁から始めるルール）。
+// レギュラーシーズン・オープン戦の10回以降に適用され、ポストシーズンでは適用されない
+// （ルール解説の「ポストシーズン」章と同じ扱い）。
+const TIEBREAK_START_INNING = 10;
+const POSTSEASON_GAME_TYPES = ['F', 'D', 'L', 'W'];
+
+// この試合に延長タイブレークが適用されるか。
+// gameType が取れない場合は false にしておく（実際にはいない走者を足さないため）。
+export function usesExtraInningTiebreak(game) {
+  const gameType = game && game.gameType;
+  if (!gameType) return false;
+  return !POSTSEASON_GAME_TYPES.includes(gameType);
+}
+
 // 全プレー（打席以外のアクションも含む）を時系列で辿り、各プレー開始時点の
 // 走者状況（一・二・三塁）とアウト数をあらかじめ計算しておく。
-// イニングの表裏が変わった時点で走者・アウトはリセットする。
-function computeStateBefore(allPlays) {
+// イニングの表裏が変わった時点で走者・アウトはリセットする。ただし延長タイブレークが
+// 適用される回は二塁走者から始まる。playByPlay はプレー「後」の走者しか返さないため、
+// イニング先頭の走者は前のプレーから引き継げず、ここで置いておく必要がある
+// （2打席目以降は前のプレーの postOnSecond 等に自動走者が反映されるので二重にはならない）。
+function computeStateBefore(allPlays, game) {
+  const tiebreak = usesExtraInningTiebreak(game);
   const map = new Map();
   let prevHalf = null;
   let prevInning = null;
@@ -165,7 +183,12 @@ function computeStateBefore(allPlays) {
     const inning = play.about.inning;
     const isNewHalf = half !== prevHalf || inning !== prevInning;
     const before = isNewHalf
-      ? { first: false, second: false, third: false, outs: 0 }
+      ? {
+          first: false,
+          second: tiebreak && inning >= TIEBREAK_START_INNING,
+          third: false,
+          outs: 0,
+        }
       : {
           first: !!(prevMatchup && prevMatchup.postOnFirst),
           second: !!(prevMatchup && prevMatchup.postOnSecond),
@@ -463,7 +486,7 @@ function renderSinglePlay(play, stateBefore) {
 // スコアボードのイニング欄タップ時に、その回だけの打席結果を組み立てる
 function renderInningDetail(inning, halfInning, playByPlay, game) {
   const allPlays = playByPlay.allPlays || [];
-  const stateBefore = computeStateBefore(allPlays);
+  const stateBefore = computeStateBefore(allPlays, game);
   const plays = allPlays.filter((p) => p.result && p.result.type === 'atBat'
     && p.about.inning === inning && p.about.halfInning === halfInning);
 
@@ -473,12 +496,17 @@ function renderInningDetail(inning, halfInning, playByPlay, game) {
   const rows = plays.length
     ? plays.map((play) => renderSinglePlay(play, stateBefore)).join('')
     : `<div class="empty-state" style="margin:0;">この回の打席データがありません。</div>`;
+  // 走者が最初から二塁にいる理由が分かるように、タイブレークの回にだけ一言添える
+  const tiebreakNote = usesExtraInningTiebreak(game) && inning >= TIEBREAK_START_INNING
+    ? '<div class="inning-detail-note">延長タイブレーク：無死二塁から始まります</div>'
+    : '';
 
   return `
     <div class="inning-detail-head">
       <span>${inning}回${halfLabel}　${battingTeam}の打撃</span>
       <button class="inning-detail-close" id="inning-detail-close" aria-label="閉じる">×</button>
     </div>
+    ${tiebreakNote}
     <div class="inning-detail-list">${rows}</div>
   `;
 }
