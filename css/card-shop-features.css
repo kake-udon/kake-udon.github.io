@@ -1181,3 +1181,15 @@ table.standings-table th:last-child, table.standings-table td:last-child { paddi
   padding: 2px 6px;
   white-space: nowrap;
 }
+
+/* 延長タイブレークの回だけ、イニード詳細に添える一言 */
+.inning-detail-note {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--ink-brown);
+  background: rgba(217, 164, 65, 0.18);
+  border-radius: 4px;
+  padding: 6px 10px;
+  margin: 8px 0 2px;
+}
