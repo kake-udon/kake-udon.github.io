@@ -1,7 +1,7 @@
 // 選手詳細シート：ベースボールカード風の全画面表示。
 // カードをタップすると裏返り、表＝プロフィール／裏＝通算成績が入れ替わる。
 // カードの下に当該シーズンの主要成績・月別成績・直近5試合を並べる。
-import { getPlayerDetail, getPlayerSplits, currentSeasonYear } from './api.js';
+import { getPlayerDetail, getPlayerSplits, getPlayerPostseasonStats, currentSeasonYear } from './api.js';
 import { TEAMS, teamShort } from './teams.js';
 import { japaneseName } from './player-names.js';
 import { getFavorites, toggleFavorite } from './db.js';
@@ -331,6 +331,72 @@ function renderSeasonBlocks(hittingStat, pitchingStat, seasonYear) {
   return html;
 }
 
+// --- ポストシーズン成績（別リクエストで後追い取得する補助情報） ---
+// P=ポストシーズン通算 / F=ワイルドカード / D=ディビジョン / L=リーグ優勝決定 / W=ワールドシリーズ。
+// APIがどの単位で返すか実レスポンスで確認できていないため、返ってきたものを並べる方針にしている
+// （返ってきた値を合算するような自前計算はしない）。
+const PS_GAMETYPE_ORDER = ['P', 'F', 'D', 'L', 'W'];
+const PS_GAMETYPE_JA = {
+  P: 'ポストシーズン通算',
+  F: 'ワイルドカードシリーズ',
+  D: 'ディビジョンシリーズ',
+  L: 'リーグ優勝決定シリーズ',
+  W: 'ワールドシリーズ',
+};
+
+// stats から指定グループのポストシーズン成績だけを取り出す。
+// gameType がポストシーズンのものでない（レギュラーシーズンが混ざった・値が無い）行は捨てる。
+// これにより、APIが gameType 指定を無視した場合でもレギュラーの数字を誤表示しない。
+function collectPostseasonRows(stats, groupName) {
+  const rows = [];
+  for (const entry of stats || []) {
+    if (!entry.group || entry.group.displayName !== groupName) continue;
+    for (const split of entry.splits || []) {
+      const gameType = split.gameType || entry.gameType;
+      if (!PS_GAMETYPE_ORDER.includes(gameType)) continue;
+      if (!split.stat) continue;
+      rows.push({ gameType, stat: split.stat });
+    }
+  }
+  rows.sort((a, b) => PS_GAMETYPE_ORDER.indexOf(a.gameType) - PS_GAMETYPE_ORDER.indexOf(b.gameType));
+  return rows;
+}
+
+function renderPostseasonGroup(rows, seasonYear, groupName) {
+  if (!rows.length) return '';
+  const title = groupName === 'pitching' ? 'ポストシーズンの投手成績' : 'ポストシーズンの打撃成績';
+  const blocks = rows.map((row) => `
+    <div class="ps-stat-block">
+      <div class="ps-stat-round">${PS_GAMETYPE_JA[row.gameType]}</div>
+      ${groupName === 'pitching' ? pitchingStatGrid(row.stat) : hittingStatGrid(row.stat)}
+    </div>
+  `).join('');
+  return `
+    <div class="card-panel">
+      <div class="card-panel-title">${title}<span class="card-panel-note">${seasonYear}年</span></div>
+      ${blocks}
+    </div>
+  `;
+}
+
+// ポストシーズン成績は補助情報。取得できない・出場していない場合は何も表示しない。
+async function loadPostseasonStats(personId, seasonYear, pitcherFirst) {
+  try {
+    const { stats } = await getPlayerPostseasonStats(personId, seasonYear);
+    const hitting = collectPostseasonRows(stats, 'hitting');
+    const pitching = collectPostseasonRows(stats, 'pitching');
+    if (!hitting.length && !pitching.length) return;
+    const target = document.getElementById('player-postseason');
+    if (!target) return; // シートが既に閉じられている場合
+    const parts = pitcherFirst
+      ? [renderPostseasonGroup(pitching, seasonYear, 'pitching'), renderPostseasonGroup(hitting, seasonYear, 'hitting')]
+      : [renderPostseasonGroup(hitting, seasonYear, 'hitting'), renderPostseasonGroup(pitching, seasonYear, 'pitching')];
+    target.innerHTML = parts.join('');
+  } catch (e) {
+    // 取得できなくてもカード本体・シーズン成績の表示は続ける
+  }
+}
+
 function wireCardFlip() {
   const card = document.getElementById('player-card');
   if (!card) return;
@@ -393,10 +459,12 @@ export async function openPlayerSheet(personId) {
       ${renderStatBulbs(hittingStat, pitchingStat, pitcherFirst)}
       <div id="player-splits"></div>
       ${renderSeasonBlocks(hittingStat, pitchingStat, seasonYear)}
+      <div id="player-postseason"></div>
       ${renderProfilePanel(person)}
     `;
     wireCardFlip();
     loadSplits(personId, seasonYear, pitcherFirst);
+    loadPostseasonStats(personId, seasonYear, pitcherFirst);
   } catch (e) {
     const body = document.getElementById('player-sheet-body');
     if (body) body.innerHTML = `<div class="empty-state">選手情報を取得できませんでした。</div>`;

@@ -139,6 +139,27 @@ export async function getTeamScheduleByJstMonth(teamId, year, month) {
   return { byDate, fromCache, offline };
 }
 
+// --- ポストシーズン日程 ---
+
+// ポストシーズン（ワイルドカード〜ワールドシリーズ）の全日程を1リクエストで取得する。
+// シリーズごとに追加取得はせず、この一覧を js/bracket.js 側でシリーズに畳む。
+// hydrate は既存の /schedule 呼び出しで実績のある team,linescore,decisions のみに留めている。
+// （シリーズ勝敗の hydrate=seriesStatus は実レスポンスを確認できていないため使わず、
+//   勝敗は各試合の結果から自前で数える。確認が取れたら補助表示として足せる。）
+export async function getPostseasonSchedule(season) {
+  const url = `${BASE}/schedule/postseason?sportId=1&season=${season}&hydrate=team,linescore,decisions`;
+  const cacheKey = `postseason-schedule:${season}`;
+  const { data, fromCache, offline } = await cachedFetch(cacheKey, url);
+  const games = [];
+  for (const dateBlock of data.dates || []) {
+    for (const game of dateBlock.games || []) {
+      games.push(game);
+    }
+  }
+  games.sort((a, b) => new Date(a.gameDate) - new Date(b.gameDate));
+  return { games, fromCache, offline };
+}
+
 // --- 順位表取得 ---
 
 export async function getStandings(season) {
@@ -204,6 +225,33 @@ export async function getPlayerSplits(personId, season) {
   const cacheKey = `player-splits:${personId}:${season}`;
   const { data, fromCache, offline } = await cachedFetch(cacheKey, url);
   return { stats: data.stats || [], fromCache, offline };
+}
+
+// 選手のポストシーズン成績。プロフィール本体（getPlayerDetail）とは別リクエストにして、
+// 取得に失敗してもベースボールカードは表示できるようにする（getPlayerSplits と同じ方針）。
+// gameType は P=ポストシーズン通算 / F=ワイルドカード / D=ディビジョン / L=リーグ優勝決定 / W=ワールドシリーズ。
+// どの gameType が実際に返るかは実レスポンスで確認できていないため、まとめて要求したうえで
+// 呼び出し側（player-sheet.js）が返ってきた gameType を見て取捨選択する。
+// もし API が gameType 指定を無視してレギュラーシーズンの成績を返した場合も、
+// 呼び出し側が gameType を検査して弾くので、誤ってレギュラーの数字を表示することはない。
+export async function getPlayerPostseasonStats(personId, season) {
+  const url = `${BASE}/people/${personId}/stats?stats=season&group=hitting,pitching&season=${season}&gameType=P,F,D,L,W`;
+  const cacheKey = `player-postseason:${personId}:${season}`;
+  const { data, fromCache, offline } = await cachedFetch(cacheKey, url);
+  return { stats: data.stats || [], fromCache, offline };
+}
+
+// --- 主要タイトルの受賞者（オフシーズンのシーズンまとめ用） ---
+
+// 賞ごとの受賞者。/api/v1/awards/{awardId}/recipients に賞IDを1つずつ渡す形でしか
+// 取得できないため、呼び出し側（season-summary.js）が必要な賞だけをまとめて要求する。
+// **実レスポンスを確認できていない**エンドポイントなので、賞IDが違う・形が違う場合に備えて
+// 呼び出し側は「取れた賞だけ表示する」前提で使うこと（取れなくても画面は壊れない）。
+export async function getAwardRecipients(awardId, season) {
+  const url = `${BASE}/awards/${awardId}/recipients?sportId=1&season=${season}`;
+  const cacheKey = `award:${awardId}:${season}`;
+  const { data, fromCache, offline } = await cachedFetch(cacheKey, url);
+  return { awards: data.awards || [], fromCache, offline };
 }
 
 // --- 試合詳細（スコアボード・打席結果） ---

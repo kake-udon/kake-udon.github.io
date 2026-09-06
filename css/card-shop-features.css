@@ -615,3 +615,569 @@
 .profile-row:last-child { border-bottom: none; }
 .profile-row span { color: var(--chalk-dim); flex-shrink: 0; }
 .profile-row b { font-weight: 600; text-align: right; }
+
+/* =========================================================
+   ⑧ ポストシーズン：順位表画面のタブとトーナメント表
+   （js/bracket.js 用。ボトムナビを増やさず順位表画面の上部で切り替える）
+   ========================================================= */
+.ps-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 4px 0 14px;
+  border-bottom: 2px solid var(--line);
+}
+.ps-tab {
+  flex: 1;
+  min-height: 44px;
+  padding: 10px 6px;
+  margin-bottom: -2px;
+  border: none;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  color: var(--chalk-dim);
+  cursor: pointer;
+}
+.ps-tab.active { color: var(--ink-brown); border-bottom-color: var(--amber); }
+.ps-tab:active { background: var(--press); }
+
+/* タブで隠す側のペイン（display:none 相当。JSからクラスの付け外しで切り替える） */
+.pane-hidden { display: none; }
+
+.bracket-round { margin-bottom: 18px; }
+.bracket-round-head {
+  font-family: 'Alfa Slab One', 'Noto Serif JP', serif;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  color: var(--ink-brown);
+  margin: 18px 2px 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.bracket-round-head .count {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 11px;
+  color: var(--chalk-dim);
+}
+
+.series-foil { margin-bottom: 14px; }
+.series-foil > .series-card { margin-bottom: 0; border: none; box-shadow: none; }
+.series-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  box-shadow: 0 3px 0 var(--line);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.series-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+.series-title {
+  flex: 1;
+  min-width: 0;
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ink-brown);
+}
+.series-badge {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--chalk-dim);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+.series-badge.is-live { color: var(--win); border-color: var(--win); }
+.series-badge.is-final { color: var(--ink-brown); border-color: var(--amber); background: rgba(217, 164, 65, 0.16); }
+
+.series-team-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--line);
+  cursor: pointer;
+}
+.series-team-row:active { background: var(--press); }
+.series-team-row.is-tbd { cursor: default; color: var(--chalk-dim); font-size: 13px; }
+.series-team-row.is-out { opacity: 0.55; }
+.series-team-abbr {
+  font-family: 'Alfa Slab One', serif;
+  font-size: 13px;
+  width: 42px;
+  flex-shrink: 0;
+}
+.series-team-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.series-wins {
+  font-family: 'Alfa Slab One', serif;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--chalk-dim);
+  width: 24px;
+  text-align: right;
+}
+.series-team-row.is-winner .series-wins { color: var(--ink-brown); }
+.series-team-row.is-winner .series-team-name { font-weight: 700; }
+
+.series-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding-top: 9px;
+  font-family: 'Noto Serif JP', serif;
+  font-size: 13px;
+  color: var(--ink-brown);
+}
+.series-format {
+  margin-left: auto;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 10px;
+  color: var(--chalk-dim);
+  white-space: nowrap;
+}
+.series-next {
+  margin-top: 6px;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 12px;
+  color: var(--win);
+}
+
+.series-games {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.series-game-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 4px 0;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.series-game-row:active { background: var(--press); }
+.series-game-no {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 12px;
+  color: var(--chalk-dim);
+  width: 46px;
+  flex-shrink: 0;
+}
+.series-game-when {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 12px;
+  color: var(--chalk-dim);
+}
+.series-game-score {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 13px;
+  color: var(--chalk-dim);
+}
+.series-game-score em { font-style: normal; }
+.series-game-score em.is-win { color: var(--ink-brown); font-weight: 700; }
+.series-game-score i { font-style: normal; color: #c3b399; }
+.series-game-note { font-family: 'Noto Serif JP', serif; font-size: 12px; color: var(--loss); }
+.series-game-if {
+  margin-left: auto;
+  font-family: 'Noto Serif JP', serif;
+  font-size: 10px;
+  color: var(--chalk-dim);
+  border: 1px dashed var(--line);
+  border-radius: 999px;
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+
+.bracket-note {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--chalk-dim);
+  margin: 4px 2px 8px;
+}
+
+/* =========================================================
+   ⑨ ペナントレース最終盤（マジックナンバー・残り試合・ホームからの導線）
+   ========================================================= */
+
+/* 順位表の行に出すバッジ。既存 .clinch-tag（金の塗り）を土台に種別で塗り分ける */
+.clinch-tag.is-clinched { background: var(--amber); color: var(--chalk); }
+.clinch-tag.is-magic {
+  background: transparent;
+  border: 1px solid var(--ink-brown);
+  color: var(--ink-brown);
+  font-family: 'Roboto Mono', monospace;
+  font-weight: 700;
+}
+.clinch-tag.is-elim-num {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--chalk-dim);
+  font-family: 'Roboto Mono', monospace;
+}
+.clinch-tag.is-eliminated { background: var(--loss); color: #fff; }
+
+/* 敗退が決まった行は控えめにする（順位そのものは読めるよう文字は消さない） */
+table.standings-table tbody tr.is-eliminated td { opacity: 0.62; }
+
+/* 「残」列が増えたぶん数値列を詰め、チーム名に使える幅を従来より広く保つ
+   （スマホ幅での実測：従来5列で236px → この指定つきの6列で244px） */
+table.standings-table th:not(:first-child),
+table.standings-table td:not(:first-child) {
+  font-size: 13px;
+  padding-left: 3px;
+  padding-right: 3px;
+}
+table.standings-table th:first-child, table.standings-table td:first-child { padding-left: 2px; }
+table.standings-table th:last-child, table.standings-table td:last-child { padding-right: 2px; }
+/* 名前が折り返した場合でも行が間延びしないようにする */
+.standings-table .team-cell { line-height: 1.3; }
+
+.race-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 2px 2px 12px;
+  font-family: 'Noto Serif JP', serif;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--chalk-dim);
+}
+.race-legend b { color: var(--ink-brown); font-family: 'Roboto Mono', monospace; }
+.race-legend em { font-style: normal; flex-basis: 100%; }
+
+/* ワイルドカード争いカード：敗退が決まったチーム */
+.wc-row.is-eliminated { opacity: 0.55; }
+.wc-out-tag {
+  margin-left: 6px;
+  font-family: 'Noto Serif JP', serif;
+  font-size: 10px;
+  color: #fff;
+  background: var(--loss);
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+
+/* ホーム最上部から順位表への導線 */
+.race-link-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  margin: 2px 0 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--amber);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+  box-shadow: 0 3px 0 var(--line);
+  cursor: pointer;
+  text-align: left;
+}
+.race-link-bar:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--line); }
+.race-link-text {
+  flex: 1;
+  min-width: 0;
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--chalk);
+}
+.race-link-cta {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-family: 'Noto Serif JP', serif;
+  font-size: 12px;
+  color: var(--ink-brown);
+  white-space: nowrap;
+}
+
+/* =========================================================
+   ⑩ ポストシーズン中のホーム・試合詳細・お知らせ
+   ========================================================= */
+
+/* ホームのコンパクトな試合カードに添えるシリーズ状況（「DS 第3戦・1勝1敗」） */
+.game-card.game-card-compact .game-card-series {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  color: var(--ink-brown);
+  background: rgba(217, 164, 65, 0.18);
+  border-radius: 3px;
+  padding: 2px 6px;
+  margin-bottom: 6px;
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 移動日（ポストシーズンで試合が無い日） */
+.travel-day-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--amber);
+  border-radius: var(--radius-md);
+  box-shadow: 0 3px 0 var(--line);
+  padding: 14px 15px;
+}
+.travel-day-title {
+  font-family: 'Alfa Slab One', 'Noto Serif JP', serif;
+  font-size: 15px;
+  color: var(--ink-brown);
+  margin-bottom: 6px;
+}
+.travel-day-next {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 13px;
+  color: var(--chalk-dim);
+}
+
+/* 試合詳細：スコアボード先頭のシリーズ表記 */
+.game-sheet-series {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--line);
+}
+.game-sheet-series-name {
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ink-brown);
+}
+.game-sheet-series-record {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 12px;
+  color: var(--chalk-dim);
+}
+.series-clinch-tag {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 11px;
+  color: var(--chalk);
+  background: var(--amber);
+  border-radius: 3px;
+  padding: 2px 7px;
+}
+
+/* お知らせ：お気に入りチームのポストシーズン状況 */
+.ps-status-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  box-shadow: 0 3px 0 var(--line);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+.ps-status-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.ps-status-team {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ps-status-badge {
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--chalk-dim);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+.ps-status-badge.is-good { color: #fff; background: var(--win); border-color: var(--win); }
+.ps-status-badge.is-hot { color: #fff; background: var(--loss); border-color: var(--loss); }
+.ps-status-badge.is-out { color: var(--chalk-dim); background: var(--bg-panel-2); }
+.ps-status-series {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 12px;
+  color: var(--ink-brown);
+}
+.ps-status-detail {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--chalk);
+  margin-top: 2px;
+}
+.ps-status-next {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+  font-family: 'Roboto Mono', monospace;
+  font-size: 12px;
+  color: var(--win);
+  cursor: pointer;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+}
+.ps-status-next:active { background: var(--press); }
+
+/* ポストシーズン成績（選手カードの下に並べる補助パネル） */
+.ps-stat-block + .ps-stat-block {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+}
+.ps-stat-round {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 12px;
+  color: var(--ink-brown);
+  margin-bottom: 6px;
+}
+
+/* =========================================================
+   ⑪ オフシーズン：シーズンまとめ・主要タイトル
+   ========================================================= */
+.summary-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  box-shadow: 0 3px 0 var(--line);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+.summary-card:active { background: var(--press); }
+.summary-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.summary-card-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.summary-card-sub {
+  font-family: 'Alfa Slab One', serif;
+  font-size: 11px;
+  color: var(--chalk-dim);
+}
+.summary-card-meta {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 11px;
+  color: var(--chalk-dim);
+  margin-bottom: 8px;
+}
+.summary-fact-row { display: flex; gap: 8px; }
+.summary-fact {
+  flex: 1;
+  background: var(--bg-panel-2);
+  border-radius: 6px;
+  padding: 7px 4px;
+  text-align: center;
+}
+.summary-fact-key {
+  display: block;
+  font-family: 'Noto Serif JP', serif;
+  font-size: 10px;
+  color: var(--chalk-dim);
+}
+.summary-fact-val {
+  display: block;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink-brown);
+}
+.summary-ps-result {
+  margin-top: 9px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+  font-family: 'Noto Serif JP', serif;
+  font-size: 12px;
+  color: var(--ink-brown);
+}
+.summary-card .standing-summary-stats { margin: 0; }
+.summary-card .standing-summary-stats + .standing-summary-stats { margin-top: 8px; }
+
+.summary-awards-btn {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--ink-brown);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-brown);
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+.summary-awards-btn:active { background: var(--press); }
+
+.award-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 8px 2px;
+  border-bottom: 1px dashed var(--line);
+}
+.award-row:last-child { border-bottom: none; }
+.award-label {
+  width: 44%;
+  flex-shrink: 0;
+  font-family: 'Noto Serif JP', serif;
+  font-size: 12px;
+  color: var(--chalk-dim);
+}
+.award-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.award-team {
+  font-family: 'Alfa Slab One', serif;
+  font-size: 10px;
+  color: #fff;
+  border-radius: 3px;
+  padding: 2px 6px;
+  white-space: nowrap;
+}

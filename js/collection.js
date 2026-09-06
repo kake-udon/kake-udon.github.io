@@ -5,6 +5,8 @@ import { getFavorites, toggleFavorite } from './db.js';
 import { TEAMS, teamName, teamColor, teamShort } from './teams.js';
 import { openTeamSheet } from './team-sheet.js';
 import { openPlayerSheet } from './player-sheet.js';
+import { isOffseason, summarySeasonYear } from './season.js';
+import { renderSeasonSummary } from './season-summary.js';
 
 function myTeamCard(fav) {
   const t = TEAMS[fav.id];
@@ -40,6 +42,7 @@ function render(container, favorites) {
   const players = favorites.filter((f) => f.type === 'player');
 
   container.innerHTML = `
+    <div id="season-summary"></div>
     <div class="section-title">推しチーム<span class="count">${teams.length}</span></div>
     ${teams.length ? teams.map(myTeamCard).join('') : '<div class="empty-state">順位表の球団マップからチームを選ぶと、ここに表示されます。</div>'}
 
@@ -49,12 +52,7 @@ function render(container, favorites) {
       : '<div class="empty-state">選手検索から★を付けると、ここに集まります。</div>'}
   `;
 
-  container.querySelectorAll('[data-teamid]').forEach((el) => {
-    el.onclick = () => openTeamSheet(Number(el.dataset.teamid));
-  });
-  container.querySelectorAll('[data-personid]').forEach((el) => {
-    el.onclick = () => openPlayerSheet(Number(el.dataset.personid));
-  });
+  wireCardTaps(container);
   container.querySelectorAll('[data-remove-personid]').forEach((btn) => {
     btn.onclick = async (e) => {
       e.stopPropagation();
@@ -66,11 +64,28 @@ function render(container, favorites) {
   });
 }
 
+// チーム・選手カードのタップ（シーズンまとめのカードも同じ属性を使う）
+function wireCardTaps(container) {
+  container.querySelectorAll('[data-teamid]').forEach((el) => {
+    el.onclick = () => openTeamSheet(Number(el.dataset.teamid));
+  });
+  container.querySelectorAll('[data-personid]').forEach((el) => {
+    el.onclick = () => openPlayerSheet(Number(el.dataset.personid));
+  });
+}
+
 export async function renderCollection(container) {
   container.innerHTML = `<div class="spinner"></div>`;
   try {
     const favorites = await getFavorites();
     render(container, favorites);
+    // オフシーズンだけ、画面の先頭にシーズンまとめを差し込む
+    // （取得に失敗しても推しチーム・推し選手の一覧は表示済み）
+    if (isOffseason()) {
+      renderSeasonSummary(container, favorites, summarySeasonYear())
+        .then(() => wireCardTaps(container))
+        .catch(() => {});
+    }
   } catch (e) {
     container.innerHTML = `<div class="empty-state">コレクションを読み込めませんでした。</div>`;
   }

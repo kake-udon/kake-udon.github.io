@@ -4,9 +4,13 @@ import { getFavorites } from './db.js';
 import { openGameSheet } from './game-sheet.js';
 import { pickTrivia } from './trivia.js';
 import { renderTodayStats } from './today-stats.js';
+import { loadBracket, findSeriesForGame, nextPostseasonGame, seriesShortLineJa } from './bracket.js';
+import { isPostseasonWindow, isOffseason, offseasonMessageJa } from './season.js';
 
 let favoriteTeamIds = new Set();
 let currentTrivia = null;
+// ポストシーズン中だけ使うシリーズ情報（日程が無い時期は null のまま）
+let bracket = null;
 
 function statusInfo(game) {
   const state = game.status.abstractGameState; // Preview / Live / Final
@@ -43,8 +47,13 @@ function renderGameCard(game) {
     return `<span class="score-digit ${isFinal && !isWin ? 'dim' : ''}">${score}</span>`;
   };
 
+  // ポストシーズンの試合には「DS 第3戦・1勝1敗」のような1行を添える
+  const series = findSeriesForGame(bracket, game.gamePk);
+  const seriesLine = series ? `<div class="game-card-series">${seriesShortLineJa(series, game)}</div>` : '';
+
   return `
     <button class="game-card game-card-compact ${isFav ? 'is-favorite' : ''}" data-gamepk="${game.gamePk}" data-away="${away.team.id}" data-home="${home.team.id}">
+      ${seriesLine}
       <div class="status-row">
         <span class="status-pill ${info.cls}">${info.label}</span>
         <span class="game-time">${hasStarted && !isFinal ? '' : formatJstTime(game.gameDate)}${!hasStarted ? ' 開始' : ''}</span>
@@ -76,9 +85,36 @@ function sortGamesByFavorite(games) {
   return [...favGames, ...otherGames];
 }
 
-function renderGameList(games) {
+// 試合が1件も無い日の表示。時期によって意味が違うので文言を出し分ける。
+//   ポストシーズン中 … 移動日（次の試合の日時まで出す）
+//   オフシーズン     … シーズン終了と次の開幕
+//   それ以外         … 従来どおり
+// isToday が false（前日の結果）のときは、シーズン終了の案内は出さない。
+function renderNoGamesState(isToday) {
+  if (bracket) {
+    const next = nextPostseasonGame(bracket);
+    if (!next) return `<div class="empty-state">ポストシーズンの全日程が終了しました。</div>`;
+    return `
+      <div class="travel-day-card">
+        <div class="travel-day-title">今日は移動日です</div>
+        <div class="travel-day-next">次の試合は ${formatJstDateLabel(next.gameDate)} ${next.status && next.status.startTimeTBD ? '時間未定' : formatJstTime(next.gameDate)}</div>
+      </div>
+    `;
+  }
+  if (isToday && isOffseason()) {
+    return `
+      <div class="travel-day-card">
+        <div class="travel-day-title">オフシーズン</div>
+        <div class="travel-day-next">${offseasonMessageJa()}</div>
+      </div>
+    `;
+  }
+  return `<div class="empty-state">この日は試合がありません。</div>`;
+}
+
+function renderGameList(games, isToday = true) {
   if (!games.length) {
-    return `<div class="empty-state">この日は試合がありません。</div>`;
+    return renderNoGamesState(isToday);
   }
   return `<div class="scoreboard-list game-grid">${sortGamesByFavorite(games).map(renderGameCard).join('')}</div>`;
 }
@@ -92,6 +128,12 @@ export async function renderHome(container) {
   await loadFavorites();
 
   container.innerHTML = `
+    <button class="race-link-bar" id="go-standings">
+      <span class="race-link-text">優勝争い・ポストシーズン</span>
+      <span class="race-link-cta">順位表を見る
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m10 6 6 6-6 6"/></svg>
+      </span>
+    </button>
     <div class="section-title">豆知識
       <button id="trivia-refresh" class="trivia-refresh-btn" aria-label="別の豆知識を見る">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.6-6.36"/><path d="M21 4v5h-5"/></svg>
@@ -112,10 +154,15 @@ export async function renderHome(container) {
 
   wireGameCardTaps(container);
   wireTriviaRefresh(container);
+  wireStandingsLink(container);
   renderTodayStats(container.querySelector('#today-stats-section'));
 
   const todayJst = toJstDateString();
   const yesterdayJst = addDaysToDateString(todayJst, -1);
+
+  // 試合カードを描く前にシリーズ情報を用意する。日程が無い時期は null のままで、
+  // レギュラーシーズン中の表示はこれまでと変わらない。
+  bracket = await loadBracket();
 
   try {
     const { games, offline } = await getGamesForJstDate(todayJst);
@@ -129,7 +176,7 @@ export async function renderHome(container) {
 
   try {
     const { games } = await getGamesForJstDate(yesterdayJst);
-    container.querySelector('#yesterday-games').innerHTML = renderGameList(games);
+    container.querySelector('#yesterday-games').innerHTML = renderGameList(games, false);
     wireGameCardTaps(container);
   } catch (e) {
     container.querySelector('#yesterday-games').innerHTML = `<div class="empty-state">前日の結果を取得できませんでした。</div>`;
@@ -150,13 +197,26 @@ function wireGameCardTaps(container) {
 }
 
 function renderTriviaCard() {
-  currentTrivia = pickTrivia(currentTrivia ? currentTrivia.text : null);
+  // ポストシーズンの時期は「ポストシーズン」カテゴリを優先して引く
+  const preferCategory = isPostseasonWindow() ? 'ポストシーズン' : null;
+  currentTrivia = pickTrivia(currentTrivia ? currentTrivia.text : null, { preferCategory });
   return `
     <div class="trivia-card">
       <span class="trivia-tag">${currentTrivia.category}</span>
       ${currentTrivia.text}
     </div>
   `;
+}
+
+// ホームから順位表へ移る導線。app.js の navigate を直接呼ぶと循環インポートになるため、
+// ボトムナビの該当ボタンを押したことにして画面遷移させる。
+function wireStandingsLink(container) {
+  const btn = container.querySelector('#go-standings');
+  if (!btn) return;
+  btn.onclick = () => {
+    const navBtn = document.querySelector('.nav-btn[data-route="standings"]');
+    if (navBtn) navBtn.click();
+  };
 }
 
 function wireTriviaRefresh(container) {
