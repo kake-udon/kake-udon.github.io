@@ -1,4 +1,5 @@
-// 選手検索画面：名前検索（英語表記・日本人選手は日本語表記・その他の選手もカタカナ近似で検索可能）
+// 選手検索画面：名前検索（英語表記・日本人選手は日本語表記・その他の選手もカタカナ近似で検索可能）と、
+// 「日本人選手」クイックフィルター（探さなくても一覧で見られる導線）
 import { getAllPlayers, currentSeasonYear } from './api.js';
 import { TEAMS } from './teams.js';
 import { getFavorites } from './db.js';
@@ -12,6 +13,7 @@ let allPlayers = [];
 let loaded = false;
 let favoritePlayerIds = new Set();
 let query = '';
+let jpOnly = false; // 「日本人選手」フィルターの状態
 
 async function ensurePlayersLoaded() {
   if (loaded) return;
@@ -48,6 +50,22 @@ function matchesQuery(p, q) {
   return false;
 }
 
+// 日本人選手かどうか。APIの birthCountry が入っていればそれを使い、
+// 入っていない場合は日本語表記の対応表（player-names.js）に載っているかで判定する。
+// /sports/1/players のレスポンスに birthCountry が含まれるかは未確認のため、両方を見る。
+function isJapanesePlayer(p) {
+  if (p.birthCountry === 'Japan') return true;
+  return Boolean(JP_NAME_ALIASES[p.id]);
+}
+
+function renderFilterBar() {
+  return `
+    <div class="filter-row search-filter-row">
+      <button class="filter-pill toggle-pill ${jpOnly ? 'active' : ''}" id="jp-only-filter" aria-pressed="${jpOnly}">日本人選手</button>
+    </div>
+  `;
+}
+
 function renderPlayerRow(p) {
   const team = p.currentTeam && TEAMS[p.currentTeam.id] ? TEAMS[p.currentTeam.id] : null;
   const isFav = favoritePlayerIds.has(p.id);
@@ -64,8 +82,20 @@ function renderPlayerRow(p) {
 
 function renderResults() {
   const q = query.trim().toLowerCase();
+  const base = jpOnly ? allPlayers.filter(isJapanesePlayer) : allPlayers;
 
   if (!q) {
+    // 「日本人選手」フィルターだけを押した状態は、検索せずに一覧を見るための表示
+    if (jpOnly) {
+      if (!base.length) {
+        return `<div class="empty-state">日本人選手が見つかりませんでした。</div>`;
+      }
+      const list = [...base].sort((a, b) => a.fullName.localeCompare(b.fullName));
+      return `
+        <div class="section-title">日本人選手<span class="count">${list.length}人</span></div>
+        <div class="team-search-list">${list.map(renderPlayerRow).join('')}</div>
+      `;
+    }
     if (!favoritePlayerIds.size) {
       return `<div class="empty-state">選手名を入力して検索してください。<br>例：Ohtani、大谷翔平、クルーズ</div>`;
     }
@@ -76,7 +106,7 @@ function renderResults() {
     `;
   }
 
-  const matched = allPlayers.filter((p) => matchesQuery(p, q));
+  const matched = base.filter((p) => matchesQuery(p, q));
   if (!matched.length) {
     return `<div class="empty-state">該当する選手が見つかりませんでした。</div>`;
   }
@@ -97,20 +127,34 @@ function wireTapTargets(container) {
   });
 }
 
+function wireFilterBar(container) {
+  const btn = container.querySelector('#jp-only-filter');
+  if (!btn) return;
+  btn.onclick = () => {
+    jpOnly = !jpOnly;
+    refresh(container);
+  };
+}
+
 function refresh(container) {
+  const bar = container.querySelector('.search-filter-row');
+  if (bar) bar.outerHTML = renderFilterBar();
   const wrap = container.querySelector('#player-search-results');
   if (wrap) wrap.innerHTML = renderResults();
+  wireFilterBar(container);
   wireTapTargets(container);
 }
 
 export async function renderPlayerSearch(container) {
   query = '';
+  jpOnly = false;
   await loadFavorites();
 
   container.innerHTML = `
     <div class="search-input-wrap">
       <input type="search" id="player-search-input" class="search-input" placeholder="選手名で検索（例：Ohtani、大谷翔平、クルーズ）" />
     </div>
+    ${renderFilterBar()}
     <div id="player-search-results"><div class="spinner"></div></div>
   `;
 
@@ -119,6 +163,7 @@ export async function renderPlayerSearch(container) {
     query = input.value;
     refresh(container);
   };
+  wireFilterBar(container);
 
   try {
     await ensurePlayersLoaded();
