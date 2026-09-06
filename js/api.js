@@ -241,6 +241,19 @@ export async function getPlayerPostseasonStats(personId, season) {
   return { stats: data.stats || [], fromCache, offline };
 }
 
+// --- 主要タイトルの受賞者（オフシーズンのシーズンまとめ用） ---
+
+// 賞ごとの受賞者。/api/v1/awards/{awardId}/recipients に賞IDを1つずつ渡す形でしか
+// 取得できないため、呼び出し側（season-summary.js）が必要な賞だけをまとめて要求する。
+// **実レスポンスを確認できていない**エンドポイントなので、賞IDが違う・形が違う場合に備えて
+// 呼び出し側は「取れた賞だけ表示する」前提で使うこと（取れなくても画面は壊れない）。
+export async function getAwardRecipients(awardId, season) {
+  const url = `${BASE}/awards/${awardId}/recipients?sportId=1&season=${season}`;
+  const cacheKey = `award:${awardId}:${season}`;
+  const { data, fromCache, offline } = await cachedFetch(cacheKey, url);
+  return { awards: data.awards || [], fromCache, offline };
+}
+
 // --- 試合詳細（スコアボード・打席結果） ---
 
 // 1試合分の概要（対戦カード・スコア・ステータス・予告先発）を取得

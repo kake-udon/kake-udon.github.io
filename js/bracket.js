@@ -8,7 +8,8 @@
 // - シリーズの勝敗数は seriesStatus のような未確認フィールドに頼らず、
 //   各試合の結果（isWinner / スコア）から数える。日程が未確定の枠も表示できるようにする。
 import { LEAGUES, TEAMS, teamName, teamShort, teamColor } from './teams.js';
-import { getPostseasonSchedule, currentSeasonYear, formatJstTime, formatJstDateLabel, toJstDateString } from './api.js';
+import { getPostseasonSchedule, currentSeasonYear, formatJstTime, formatJstDateLabel } from './api.js';
+import { isPostseasonWindow } from './season.js';
 
 // gameType は F=ワイルドカード, D=ディビジョン, L=リーグ優勝決定, W=ワールドシリーズ。
 // winsNeeded は勝ち上がりに必要な勝ち数、defaultGames は最大試合数（日程が未確定のときの既定値）。
@@ -326,8 +327,10 @@ export function wireBracket(container, { onTeam, onGame }) {
 // ポストシーズンの日程を取得してシリーズに畳む。日程が無い時期・取れなかった場合は null。
 // ホーム／順位表／試合詳細／お知らせから同じキーで呼ぶため、cachedFetch のキャッシュを共有し、
 // 画面をまたいでも実際の通信は増えない。
-export async function loadBracket(season = currentSeasonYear()) {
-  if (!isPostseasonWindow()) return null;
+// options.force を立てると時期の判定を飛ばす（オフシーズンのシーズンまとめで、
+// 終わったシーズンの勝ち上がりを振り返るときに使う）。
+export async function loadBracket(season = currentSeasonYear(), options = {}) {
+  if (!options.force && !isPostseasonWindow()) return null;
   try {
     const { games } = await getPostseasonSchedule(season);
     const bracket = buildBracket(games);
@@ -459,12 +462,4 @@ export function seriesTeamStatus(series, teamId) {
   return me.wins > opp.wins
     ? { key: 'lead', label: 'リード', detail: `${record}でリードしています。` }
     : { key: 'trail', label: 'ビハインド', detail: `${record}で追う展開です。` };
-}
-
-// トーナメント表を出す時期かどうか。ポストシーズンの日程が存在しない時期に
-// 毎回スケジュールを取りに行かないための目安（9/1〜11/20 JST）。
-// 実際にタブを出すかどうかは、この期間内で取得した日程に試合があるかで最終判断する。
-export function isPostseasonWindow(jstDateStr = toJstDateString()) {
-  const md = jstDateStr.slice(5); // 'MM-DD'
-  return md >= '09-01' && md <= '11-20';
 }

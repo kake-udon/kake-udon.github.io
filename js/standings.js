@@ -6,6 +6,7 @@ import { getFavorites } from './db.js';
 import { psClass, renderWildcardCard, buildRaceContext, raceInfo } from './postseason.js';
 import { renderGbRuler } from './gb-ruler.js';
 import { loadBracket, renderBracket, wireBracket } from './bracket.js';
+import { isOffseason, offseasonMessageJa } from './season.js';
 
 let cachedRecords = null;
 let teamRecordById = new Map(); // teamId -> teamRecord（絞り込みの判定に使用）
@@ -259,7 +260,9 @@ function renderBody(container) {
     return;
   }
   if (!cachedRecords.length) {
-    body.innerHTML = `<div class="empty-state">現在、順位表データがありません。シーズン開幕前後は表示できない場合があります。</div>`;
+    body.innerHTML = isOffseason()
+      ? `<div class="empty-state">${offseasonMessageJa()}<br>順位表は開幕後に表示されます。</div>`
+      : `<div class="empty-state">現在、順位表データがありません。シーズン開幕前後は表示できない場合があります。</div>`;
     return;
   }
   // マジックナンバー・敗退マジックは絞り込み前の全球団から求める
