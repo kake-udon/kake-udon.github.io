@@ -227,6 +227,20 @@ export async function getPlayerSplits(personId, season) {
   return { stats: data.stats || [], fromCache, offline };
 }
 
+// 選手のポストシーズン成績。プロフィール本体（getPlayerDetail）とは別リクエストにして、
+// 取得に失敗してもベースボールカードは表示できるようにする（getPlayerSplits と同じ方針）。
+// gameType は P=ポストシーズン通算 / F=ワイルドカード / D=ディビジョン / L=リーグ優勝決定 / W=ワールドシリーズ。
+// どの gameType が実際に返るかは実レスポンスで確認できていないため、まとめて要求したうえで
+// 呼び出し側（player-sheet.js）が返ってきた gameType を見て取捨選択する。
+// もし API が gameType 指定を無視してレギュラーシーズンの成績を返した場合も、
+// 呼び出し側が gameType を検査して弾くので、誤ってレギュラーの数字を表示することはない。
+export async function getPlayerPostseasonStats(personId, season) {
+  const url = `${BASE}/people/${personId}/stats?stats=season&group=hitting,pitching&season=${season}&gameType=P,F,D,L,W`;
+  const cacheKey = `player-postseason:${personId}:${season}`;
+  const { data, fromCache, offline } = await cachedFetch(cacheKey, url);
+  return { stats: data.stats || [], fromCache, offline };
+}
+
 // --- 試合詳細（スコアボード・打席結果） ---
 
 // 1試合分の概要（対戦カード・スコア・ステータス・予告先発）を取得

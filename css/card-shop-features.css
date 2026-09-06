@@ -1051,3 +1051,16 @@ table.standings-table th:last-child, table.standings-table td:last-child { paddi
   align-items: center;
 }
 .ps-status-next:active { background: var(--press); }
+
+/* ポストシーズン成績（選手カードの下に並べる補助パネル） */
+.ps-stat-block + .ps-stat-block {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+}
+.ps-stat-round {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 12px;
+  color: var(--ink-brown);
+  margin-bottom: 6px;
+}

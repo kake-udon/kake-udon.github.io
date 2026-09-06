@@ -4,7 +4,7 @@ import { getFavorites } from './db.js';
 import { openGameSheet } from './game-sheet.js';
 import { pickTrivia } from './trivia.js';
 import { renderTodayStats } from './today-stats.js';
-import { loadBracket, findSeriesForGame, nextPostseasonGame, seriesShortLineJa } from './bracket.js';
+import { loadBracket, findSeriesForGame, nextPostseasonGame, seriesShortLineJa, isPostseasonWindow } from './bracket.js';
 
 let favoriteTeamIds = new Set();
 let currentTrivia = null;
@@ -183,7 +183,9 @@ function wireGameCardTaps(container) {
 }
 
 function renderTriviaCard() {
-  currentTrivia = pickTrivia(currentTrivia ? currentTrivia.text : null);
+  // ポストシーズンの時期は「ポストシーズン」カテゴリを優先して引く
+  const preferCategory = isPostseasonWindow() ? 'ポストシーズン' : null;
+  currentTrivia = pickTrivia(currentTrivia ? currentTrivia.text : null, { preferCategory });
   return `
     <div class="trivia-card">
       <span class="trivia-tag">${currentTrivia.category}</span>
