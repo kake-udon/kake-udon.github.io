@@ -12,25 +12,14 @@ export function gamesBackValue(tr) {
   return Number.isNaN(n) ? 0 : n;
 }
 
-// 目盛りの最大値。実際の最大ゲーム差より少し広い、キリの良い値にする。
-function rulerMax(maxGb) {
-  if (maxGb <= 5) return 5;
-  if (maxGb <= 10) return 10;
-  return Math.ceil(maxGb / 5) * 5;
-}
-
-// 目盛りの刻み幅（軸に3〜6本程度の目盛りが並ぶように選ぶ）
-function tickStep(max) {
-  if (max <= 5) return 1;
-  if (max <= 10) return 2;
-  if (max <= 30) return 5;
-  return 10;
-}
+// 横軸は25ゲーム差で固定する（最下位のゲーム差で軸が伸び縮みすると地区間で比べにくいため）。
+// これを超えるチームはものさしに載せず「表示なし」とする。
+const RULER_MAX = 25;
+const TICK_STEP = 5;
 
 function ticksFor(max) {
-  const step = tickStep(max);
   const ticks = [];
-  for (let v = 0; v <= max; v += step) ticks.push(v);
+  for (let v = 0; v <= max; v += TICK_STEP) ticks.push(v);
   return ticks;
 }
 
@@ -39,9 +28,11 @@ function ticksFor(max) {
 export function renderGbRuler(divisionLabel, records, showNote = false) {
   if (!records || !records.length) return '';
   const rows = [...records].sort((a, b) => (a.divisionRank || 99) - (b.divisionRank || 99));
-  const max = rulerMax(Math.max(...rows.map(gamesBackValue), 0));
+  const max = RULER_MAX;
+  const inRange = rows.filter((tr) => gamesBackValue(tr) <= max);
+  const outOfRange = rows.filter((tr) => gamesBackValue(tr) > max);
 
-  const marks = rows.map((tr) => {
+  const marks = inRange.map((tr) => {
     const gb = gamesBackValue(tr);
     const ratio = max ? gb / max : 0;
     const label = gb === 0 ? '首位' : `-${gb.toFixed(1)}`;
@@ -70,6 +61,7 @@ export function renderGbRuler(divisionLabel, records, showNote = false) {
         <div class="gb-axis-line"></div>
         <div class="gb-axis-ticks">${ticks}</div>
       </div>
+      ${outOfRange.length ? `<div class="gb-ruler-note">表示なし（${max}ゲーム差超）：${outOfRange.map((tr) => teamShort(tr.team.id)).join('・')}</div>` : ''}
       ${showNote ? '<div class="gb-ruler-note">左端が首位。右へ離れるほど首位とのゲーム差が大きい。目盛りの単位はゲーム差。</div>' : ''}
     </div>
   `;
