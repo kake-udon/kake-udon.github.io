@@ -99,6 +99,15 @@ async function fetchSubscriptions() {
   return res.json();
 }
 
+// Supabase無料枠は7日間アクセスが無いとプロジェクトが自動で一時停止され、ホスト名も引けなくなる
+// （実測：送信ウィンドウ外スキップが続いた2026-09-04〜09-22の間に停止し、ENOTFOUNDで失敗）。
+// 送信しない回でも1行だけ読んで、定期的なアクセスを必ず発生させる。失敗時は例外でジョブを失敗させ、
+// 停止に早く気づけるようにする。
+async function pingSupabase() {
+  const res = await fetch(`${SUPABASE_TABLE_URL}?select=endpoint&limit=1`, { headers: supabaseHeaders() });
+  if (!res.ok) throw new Error(`Supabaseへの疎通確認に失敗しました（${res.status}）`);
+}
+
 async function updateLastNotified(endpoint, dateStr) {
   await fetch(`${SUPABASE_TABLE_URL}?endpoint=eq.${encodeURIComponent(endpoint)}`, {
     method: 'PATCH',
@@ -213,6 +222,7 @@ async function main() {
   if (!FORCE_SEND && !isWithinSendWindow(now)) {
     // ここに来るのはスケジュール実行が日付をまたぐほど遅延した回（または開始前）。送信しない。
     // ジョブ自体は成功扱いになるため、Actionsの画面で気づけるよう ::warning:: の注記を出す。
+    await pingSupabase();
     console.log(
       `::warning::送信ウィンドウ外のためスキップしました（現在 ${jstHour(now)}時JST / ウィンドウ ${WINDOW_START_HOUR}:00〜${WINDOW_END_HOUR - 1}:59 JST）`
     );
