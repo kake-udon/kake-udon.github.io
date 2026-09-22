@@ -83,7 +83,7 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Web Push通知の受信（送信元は scripts/send-notifications.mjs、毎日18時JSTのダイジェスト）
+// Web Push通知の受信（送信元は scripts/send-notifications.mjs、毎日15時以降JSTのダイジェスト）
 self.addEventListener('push', (event) => {
   let data = { title: 'MLB Watch', body: '新着情報があります。' };
   if (event.data) {

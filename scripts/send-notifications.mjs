@@ -1,4 +1,4 @@
-// GitHub Actions専用スクリプト：毎日15時台(JST)に、お気に入りチームの試合結果と次戦予定を
+// GitHub Actions専用スクリプト：毎日15時以降(JST)に、お気に入りチームの試合結果と次戦予定を
 // Web Pushダイジェストとして送信する。Node単体で完結させるため、js/db.js（IndexedDB依存）は使わず、
 // JST日付計算のみ api.js と同じロジックをここで小さく再実装している。
 // クライアント側（js/*.js）はブラウザ専用のバンドラーなしES Modulesのままで、この分離を保つこと。
@@ -7,19 +7,21 @@
 // GitHub Actionsのスケジュール実行は混雑時に数時間〜半日遅延することがあり、実測でも
 // 深夜〜翌朝に起動した回があった（例：2026-08-27の回が8/28 04:26 JSTに実行）。
 // そこでワークフロー側は複数回起動し、このスクリプトが「JSTの送信ウィンドウ内か」を
-// 判定して、ウィンドウ外に遅延した回は送信せず次の回に委ねる。これにより
+// 判定して、ウィンドウ外の回は送信しない。これにより
 //   ・深夜/翌朝に通知が届く
 //   ・日付をまたいだ実行が last_notified_date を翌日で埋め、翌日の回が丸ごとスキップされる
 // の両方を防ぐ。手動テスト（workflow_dispatchのforce）ではウィンドウ判定を無視する。
 // cronの時刻だけを信用する実装に戻さないこと。
 //
-// 【送信時刻を15:00〜17:59にしている理由】
+// 【送信ウィンドウを15:00〜23:59にしている理由】
 // MLBの試合は日本時間の朝〜昼に終わる（レギュラーシーズンで最も遅い西海岸のナイターでも
-// 14:30頃、ポストシーズンはさらに早い）。夕方18時台に送ると「半日前に終わった試合」を
-// 知らせることになるため、結果が出そろう15時台からのウィンドウに統一している。
-// レギュラーシーズンとポストシーズンで時間帯を分けると設定が二重になるので、年間を通して
-// 同じウィンドウを使う。時間帯を変えたい場合は NOTIFY_WINDOW_START_HOUR /
-// NOTIFY_WINDOW_END_HOUR と notify.yml の cron を合わせて調整すること。
+// 14:30頃、ポストシーズンはさらに早い）ので、結果が出そろう15時を開始にしている。
+// 終了は当初17:59にしていたが、実測ではスケジュール実行が毎日1回・19〜21時台（JST）にしか
+// 起動せず、2026-09-04〜09-22は全回ウィンドウ外でスキップされ通知が1通も届かなかった。
+// 「遅れてでも当日中に届く」ほうが「届かない」より良いので、同じJST日の終わり（23:59）まで
+// 広げている。日付をまたぐ回だけを止めれば上の2つの問題は防げる。
+// レギュラーシーズンとポストシーズンで時間帯は分けない。時間帯を変えたい場合は
+// NOTIFY_WINDOW_START_HOUR / NOTIFY_WINDOW_END_HOUR と notify.yml の cron を合わせて調整すること。
 import webpush from 'web-push';
 import { TEAMS, teamName, teamShort } from '../js/teams.js';
 
@@ -30,12 +32,14 @@ const VAPID_PRIVATE_KEY = requireEnv('VAPID_PRIVATE_KEY');
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'https://kake-udon.github.io';
 const FORCE_SEND = process.env.FORCE_SEND === 'true';
 
-// 送信ウィンドウ（JST、開始は以上・終了は未満）。既定は15:00〜17:59で、年間を通して同じ。
+// 送信ウィンドウ（JST、開始は以上・終了は未満）。既定は15:00〜23:59で、年間を通して同じ。
+// 終了は24（=同じJST日の終わり）まで。日付をまたぐ値にはしないこと。
 // 環境変数を設定した場合はそちらが優先される（手元での検証・臨時の変更用）。
 const WINDOW_START_HOUR = Number(process.env.NOTIFY_WINDOW_START_HOUR ?? 15);
-const WINDOW_END_HOUR = Number(process.env.NOTIFY_WINDOW_END_HOUR ?? 18);
-// Push の有効期限（秒）。配信が遅れた通知が翌朝に届くのを防ぐため、ウィンドウを過ぎたら破棄させる。
-const PUSH_TTL_SECONDS = 4 * 60 * 60;
+const WINDOW_END_HOUR = Number(process.env.NOTIFY_WINDOW_END_HOUR ?? 24);
+// Push の有効期限（秒）の上限。端末がオフラインで配信が遅れた通知が翌朝に届かないよう、
+// 実際には「JSTの日付が変わるまで」と比べて短いほうを使う（pushTtlSeconds）。
+const PUSH_TTL_MAX_SECONDS = 4 * 60 * 60;
 
 const MLB_BASE = 'https://statsapi.mlb.com/api/v1';
 const SUPABASE_TABLE_URL = `${SUPABASE_URL}/rest/v1/push_subscriptions`;
@@ -71,6 +75,12 @@ function jstHour(date = new Date()) {
 function isWithinSendWindow(date = new Date()) {
   const hour = jstHour(date);
   return hour >= WINDOW_START_HOUR && hour < WINDOW_END_HOUR;
+}
+// Pushの有効期限（秒）。JSTの日付が変わるまでの残り時間と上限の短いほうにする（最低60秒）。
+function pushTtlSeconds(now = new Date()) {
+  const { end } = jstDayRangeUtc(toJstDateString(now));
+  const untilMidnight = Math.floor((end.getTime() - now.getTime()) / 1000);
+  return Math.max(60, Math.min(PUSH_TTL_MAX_SECONDS, untilMidnight));
 }
 function formatJstDateTime(isoString) {
   return new Intl.DateTimeFormat('ja-JP', {
@@ -188,10 +198,10 @@ function buildTeamLine(teamId, todayGames, upcomingGames, now) {
 }
 
 // --- Web Push送信 ---
-async function sendPush(sub, payload) {
+async function sendPush(sub, payload, ttl) {
   const pushSubscription = { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } };
   try {
-    await webpush.sendNotification(pushSubscription, JSON.stringify(payload), { TTL: PUSH_TTL_SECONDS, urgency: 'high' });
+    await webpush.sendNotification(pushSubscription, JSON.stringify(payload), { TTL: ttl, urgency: 'high' });
     return { ok: true };
   } catch (err) {
     return { ok: false, statusCode: err.statusCode };
@@ -201,9 +211,10 @@ async function sendPush(sub, payload) {
 async function main() {
   const now = new Date();
   if (!FORCE_SEND && !isWithinSendWindow(now)) {
-    // ここに来るのはスケジュール実行が大きく遅延した回。送信せず、同日の後続の回（または翌日）に委ねる。
+    // ここに来るのはスケジュール実行が日付をまたぐほど遅延した回（または開始前）。送信しない。
+    // ジョブ自体は成功扱いになるため、Actionsの画面で気づけるよう ::warning:: の注記を出す。
     console.log(
-      `送信ウィンドウ外のためスキップします（現在 ${jstHour(now)}時JST / ウィンドウ ${WINDOW_START_HOUR}:00〜${WINDOW_END_HOUR - 1}:59 JST）`
+      `::warning::送信ウィンドウ外のためスキップしました（現在 ${jstHour(now)}時JST / ウィンドウ ${WINDOW_START_HOUR}:00〜${WINDOW_END_HOUR - 1}:59 JST）`
     );
     return;
   }
@@ -218,6 +229,8 @@ async function main() {
   if (!targets.length) return;
 
   const { todayGames, upcomingGames } = await fetchScheduleData();
+  const ttl = pushTtlSeconds(now);
+  const counts = { sent: 0, noContent: 0, expired: 0, failed: 0 };
 
   for (const sub of targets) {
     const lines = sub.team_ids
@@ -226,21 +239,31 @@ async function main() {
     // 伝えることが無い購読者には送らない（お気に入りチームが全て敗退した後など）
     if (!lines.length) {
       console.log(`送信対象なし（本日の試合・予定なし）: ${sub.endpoint.slice(0, 48)}...`);
+      counts.noContent++;
       continue;
     }
     const payload = { title: 'MLB Watch', body: lines.join('\n'), url: './index.html' };
 
-    const result = await sendPush(sub, payload);
+    const result = await sendPush(sub, payload, ttl);
     if (result.ok) {
       await updateLastNotified(sub.endpoint, todayJst);
       console.log(`送信成功: ${sub.endpoint.slice(0, 48)}...`);
+      counts.sent++;
     } else if (result.statusCode === 404 || result.statusCode === 410) {
       await deleteSubscription(sub.endpoint);
       console.log(`期限切れ購読を削除: ${sub.endpoint.slice(0, 48)}...`);
+      counts.expired++;
     } else {
       console.error(`送信失敗(${result.statusCode}): ${sub.endpoint.slice(0, 48)}...`);
+      counts.failed++;
     }
   }
+
+  // Actionsの実行サマリーに結果を注記として残す（ログを開かなくても送れたかどうか分かるように）
+  const level = counts.failed ? 'warning' : 'notice';
+  console.log(
+    `::${level}::送信 ${counts.sent}件 / 内容なし ${counts.noContent}件 / 期限切れ削除 ${counts.expired}件 / 失敗 ${counts.failed}件（${jstHour(now)}時JST）`
+  );
 }
 
 main().catch((err) => {
