@@ -312,8 +312,9 @@ function renderBody(container) {
 
   body.innerHTML = blocks
     ? legend + blocks
-      + renderWildcardCard(cachedRecords, 104, 'ナ・リーグ', raceCtx)
+      // 地区ブロック（ア東→…→ナ西）と同じく、ア・リーグ → ナ・リーグの順に並べる
       + renderWildcardCard(cachedRecords, 103, 'ア・リーグ', raceCtx)
+      + renderWildcardCard(cachedRecords, 104, 'ナ・リーグ', raceCtx)
     : `<div class="empty-state">条件に一致するチームがありません。</div>`;
   wireInteractions(container);
   body.querySelectorAll('[data-sim-division]').forEach((btn) => {
