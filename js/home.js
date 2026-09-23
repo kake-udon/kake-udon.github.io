@@ -6,6 +6,7 @@ import { pickTrivia } from './trivia.js';
 import { renderTodayStats } from './today-stats.js';
 import { loadBracket, findSeriesForGame, nextPostseasonGame, seriesShortLineJa } from './bracket.js';
 import { isPostseasonWindow, isOffseason, offseasonMessageJa } from './season.js';
+import { requestStandingsTab } from './standings.js';
 
 let favoriteTeamIds = new Set();
 let currentTrivia = null;
@@ -127,7 +128,19 @@ async function loadFavorites() {
 export async function renderHome(container) {
   await loadFavorites();
 
+  // ポストシーズンの時期は、トーナメント表へ1タップで行けるボタンを最上部に並べる
+  const bracketLink = isPostseasonWindow()
+    ? `
+    <button class="race-link-bar bracket-link-bar" id="go-bracket">
+      <span class="race-link-text">ポストシーズン トーナメント表</span>
+      <span class="race-link-cta">勝ち上がりを見る
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m10 6 6 6-6 6"/></svg>
+      </span>
+    </button>`
+    : '';
+
   container.innerHTML = `
+    ${bracketLink}
     <button class="race-link-bar" id="go-standings">
       <span class="race-link-text">優勝争い・ポストシーズン</span>
       <span class="race-link-cta">順位表を見る
@@ -210,13 +223,21 @@ function renderTriviaCard() {
 
 // ホームから順位表へ移る導線。app.js の navigate を直接呼ぶと循環インポートになるため、
 // ボトムナビの該当ボタンを押したことにして画面遷移させる。
+// トーナメント表へは、順位表画面に「最初はトーナメントのタブ」と伝えてから同じ方法で移る。
 function wireStandingsLink(container) {
-  const btn = container.querySelector('#go-standings');
-  if (!btn) return;
-  btn.onclick = () => {
+  const goStandings = () => {
     const navBtn = document.querySelector('.nav-btn[data-route="standings"]');
     if (navBtn) navBtn.click();
   };
+  const btn = container.querySelector('#go-standings');
+  if (btn) btn.onclick = goStandings;
+  const bracketBtn = container.querySelector('#go-bracket');
+  if (bracketBtn) {
+    bracketBtn.onclick = () => {
+      requestStandingsTab('bracket');
+      goStandings();
+    };
+  }
 }
 
 function wireTriviaRefresh(container) {
