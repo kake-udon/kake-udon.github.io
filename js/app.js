@@ -91,6 +91,15 @@ function updateClock() {
 
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
+    // 新しいService Workerに切り替わったら1回だけ再読み込みして、新しい画面を出す。
+    // 初回インストール（それまで制御していたSWが無い）のときは再読み込みしない。
+    const hadController = Boolean(navigator.serviceWorker.controller);
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController || reloaded) return;
+      reloaded = true;
+      window.location.reload();
+    });
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('service-worker.js').catch((err) => {
         console.warn('Service Worker registration failed:', err);

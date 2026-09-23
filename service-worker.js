@@ -1,6 +1,6 @@
 // アプリシェル（静的アセット）のキャッシュを担当。
 // 試合データ・順位表データのキャッシュは js/db.js の IndexedDB 側で行う。
-const CACHE_NAME = 'mlb-watch-shell-v33';
+const CACHE_NAME = 'mlb-watch-shell-v34';
 const SHELL_ASSETS = [
   './',
   './index.html',
@@ -41,7 +41,12 @@ const SHELL_ASSETS = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL_ASSETS)).then(() => self.skipWaiting())
+    // cache: 'reload' でブラウザのHTTPキャッシュを通さずに取得する。GitHub Pages は10分間の
+    // キャッシュを許すため、デプロイ直後にインストールすると古いJSを新しいキャッシュに
+    // 取り込んでしまい、キャッシュ名を上げても画面が更新されないことがあった。
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(SHELL_ASSETS.map((url) => new Request(url, { cache: 'reload' }))))
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -71,7 +76,8 @@ self.addEventListener('fetch', (event) => {
 
   event.respondWith(
     caches.match(event.request).then((cached) => {
-      const networkFetch = fetch(event.request)
+      // 裏での更新もHTTPキャッシュを使わず、サーバーに確認する（変更がなければ304で軽く済む）
+      const networkFetch = fetch(event.request, { cache: 'no-cache' })
         .then((res) => {
           if (res && res.status === 200) {
             const clone = res.clone();
