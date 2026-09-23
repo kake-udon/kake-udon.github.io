@@ -7,6 +7,7 @@ import { psClass, renderWildcardCard, buildRaceContext, raceInfo } from './posts
 import { renderGbRuler } from './gb-ruler.js';
 import { loadBracket, renderBracket, wireBracket } from './bracket.js';
 import { isOffseason, offseasonMessageJa } from './season.js';
+import { openSimSheet } from './sim-sheet.js';
 
 let cachedRecords = null;
 let teamRecordById = new Map(); // teamId -> teamRecord（絞り込みの判定に使用）
@@ -280,7 +281,10 @@ function renderBody(container) {
     isFirstBlock = false;
     return `
       <div class="division-block">
-        <div class="division-header">${DIVISIONS[divId]}</div>
+        <div class="division-header">
+          <span>${DIVISIONS[divId]}</span>
+          <button class="sim-open-btn" data-sim-division="${divId}" aria-label="${DIVISIONS[divId]}の順位シミュレーション">もしも順位 ▶</button>
+        </div>
         ${renderGbRuler(DIVISIONS[divId], filteredTeams, withNote)}
         ${renderDivisionTable(filteredTeams, raceCtx)}
       </div>
@@ -302,6 +306,9 @@ function renderBody(container) {
       + renderWildcardCard(cachedRecords, 103, 'ア・リーグ', raceCtx)
     : `<div class="empty-state">条件に一致するチームがありません。</div>`;
   wireInteractions(container);
+  body.querySelectorAll('[data-sim-division]').forEach((btn) => {
+    btn.onclick = () => openSimSheet(Number(btn.dataset.simDivision));
+  });
   body.querySelectorAll('.wc-row[data-teamid], .gb-row[data-teamid]').forEach((row) => {
     row.onclick = () => openTeamSheet(Number(row.dataset.teamid));
     row.onkeydown = (e) => {
