@@ -317,7 +317,11 @@ function renderBody(container) {
     : `<div class="empty-state">条件に一致するチームがありません。</div>`;
   wireInteractions(container);
   body.querySelectorAll('[data-sim-division]').forEach((btn) => {
-    btn.onclick = () => openSimSheet(Number(btn.dataset.simDivision));
+    // 地区見出しは地区ID、ワイルドカード争いカードは 'wc103' / 'wc104'
+    btn.onclick = () => {
+      const v = btn.dataset.simDivision;
+      openSimSheet(v.startsWith('wc') ? v : Number(v));
+    };
   });
   body.querySelectorAll('.wc-row[data-teamid], .gb-row[data-teamid]').forEach((row) => {
     row.onclick = () => openTeamSheet(Number(row.dataset.teamid));

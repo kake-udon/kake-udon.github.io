@@ -254,6 +254,9 @@ export function renderWildcardCard(records, leagueId, leagueLabel, ctx = null) {
   return `
     <div class="wc-card">
       <div class="section-title" style="margin-top:0;">ワイルドカード争い<span class="count">${leagueLabel}</span></div>
+      <div class="wc-card-actions">
+        <button class="sim-open-btn" data-sim-division="wc${leagueId}" aria-label="${leagueLabel}のワイルドカード争いをシミュレーション">もしも順位 ▶</button>
+      </div>
       ${html}
       <div class="wc-legend">
         <span><i class="lg-division"></i>地区首位</span>

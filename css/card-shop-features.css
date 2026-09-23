@@ -1638,3 +1638,35 @@ table.standings-table th:last-child, table.standings-table td:last-child { paddi
   background: var(--amber);
   border: 1px solid var(--amber);
 }
+
+/* ---- 順位シミュレーション：勝率列とワイルドカード争い ---- */
+/* ワイルドカード争いカードにも「もしも順位」ボタンを添える（見出しが詰まるので別の行に右寄せ） */
+.wc-card-actions { display: flex; justify-content: flex-end; margin: -4px 0 6px; }
+
+/* 7列（チーム・勝・敗・率・差・残・状況）になるので、数値列を詰めてチーム名の幅を確保する */
+.sim-table th:not(:first-child),
+.sim-table td:not(:first-child) { padding-left: 3px; padding-right: 3px; font-size: 12px; }
+.sim-table .team-cell { gap: 5px; font-size: 13px; }
+.sim-table .rank-num { width: auto; min-width: 16px; font-size: 11px; }
+
+/* ワイルドカードのタブは地区タブと区別できるよう枠線を金にする */
+.sim-division-tabs .filter-pill.is-wc { border-color: var(--amber); }
+
+/* 「地区首位」「ワイルドカード」の区切り行 */
+table.standings-table tbody tr.sim-group-row { cursor: default; }
+table.standings-table tbody tr.sim-group-row:active { background: transparent; }
+table.standings-table tbody tr.sim-group-row td {
+  padding: 10px 2px 4px !important;
+  border-left: none !important;
+  text-align: left !important;
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 600;
+  font-size: 11px !important;
+  color: var(--ink-brown);
+}
+/* WC3位の下に当落線（破線）を引く */
+table.standings-table tbody tr.sim-cutline td { border-bottom: 2px dashed var(--loss); }
+/* チーム列を残りの幅いっぱいに取り、長い愛称（ダイヤモンドバックス等）は省略記号で切る */
+.sim-table td:first-child { width: 100%; max-width: 0; }
+.sim-table .team-cell { min-width: 0; }
+.sim-table .sim-team-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

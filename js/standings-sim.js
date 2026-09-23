@@ -45,9 +45,10 @@ export function hasTiebreaker(h2h, a, b, seriesGames = DIVISION_SERIES_GAMES) {
 /**
  * team から見た rival に対するマジックナンバー
  * 0 なら rival に対して確定
+ * seriesGames は2球団の今季の対戦数（同地区13。別地区とのワイルドカード争いでは6〜7）
  */
-export function magicNumber(team, rival, h2h) {
-  const tb = hasTiebreaker(h2h, team.id, rival.id) ? 1 : 0;
+export function magicNumber(team, rival, h2h, seriesGames = DIVISION_SERIES_GAMES) {
+  const tb = hasTiebreaker(h2h, team.id, rival.id, seriesGames) ? 1 : 0;
   return Math.max(SEASON_GAMES + 1 - team.wins - rival.losses - tb, 0);
 }
 
@@ -75,6 +76,55 @@ export function sortDivision(divisionTeams, h2h) {
     if (Math.abs(diff) > 1e-9) return diff;
     return h2hWins(h2h, b.id, a.id) - h2hWins(h2h, a.id, b.id);
   });
+}
+
+/** 勝率の表示（.588 の形。0勝0敗は .000） */
+export function formatPct(t) {
+  return pct(t).toFixed(3).replace(/^0/, '');
+}
+
+/**
+ * ワイルドカード争い（1リーグぶん）
+ *   leagueTeams: リーグ15球団（applyPicks 済み）
+ *   meetings:    { [a]: { [b]: 今季の対戦数 } } … 別地区どうしのタイブレーカー判定に使う
+ * 戻り値:
+ *   divisionWinners: 各地区の首位（勝率順）。{ team, magic }（magic は地区優勝マジック）
+ *   wildcard:        地区首位以外の並び（勝率 → 直接対決）。{ team, rank, status, value }
+ *     status: 'clinched'（WC確保）| 'magic'（M value）| 'alive'（E value）| 'eliminated'（敗退）
+ * 地区首位が入れ替わると別の球団がWC争いに加わるため、判定はあくまで目安。
+ */
+export function wildcardRace(leagueTeams, h2h, meetings = {}, slots = 3) {
+  const seriesOf = (a, b) => meetings?.[a]?.[b] ?? DIVISION_SERIES_GAMES;
+  const byDivision = new Map();
+  for (const t of leagueTeams) {
+    if (!byDivision.has(t.divisionId)) byDivision.set(t.divisionId, []);
+    byDivision.get(t.divisionId).push(t);
+  }
+  const winners = [];
+  for (const teams of byDivision.values()) {
+    const [top] = sortDivision(teams, h2h);
+    winners.push({ team: top, magic: divisionMagic(top, teams, h2h) });
+  }
+  winners.sort((a, b) => pct(b.team) - pct(a.team));
+  const winnerIds = new Set(winners.map((w) => w.team.id));
+
+  const others = sortDivision(leagueTeams.filter((t) => !winnerIds.has(t.id)), h2h);
+  const wildcard = others.map((t, i) => {
+    const divTeams = byDivision.get(t.divisionId) || [];
+    const divAlive = divisionMagic(t, divTeams, h2h) !== null;
+    if (i < slots) {
+      // 圏内：圏外の先頭（WC4位）に対するマジック
+      const firstOut = others[slots];
+      const m = firstOut ? magicNumber(t, firstOut, h2h, seriesOf(t.id, firstOut.id)) : 0;
+      return { team: t, rank: i + 1, status: m === 0 ? 'clinched' : 'magic', value: m };
+    }
+    // 圏外：当落線（WC3位）が t を上回るまでの数。地区優勝の目が残っていれば敗退にはしない
+    const cutline = others[slots - 1];
+    const e = magicNumber(cutline, t, h2h, seriesOf(cutline.id, t.id));
+    if (e === 0 && !divAlive) return { team: t, rank: i + 1, status: 'eliminated', value: 0 };
+    return { team: t, rank: i + 1, status: 'alive', value: e, divisionAlive: divAlive };
+  });
+  return { divisionWinners: winners, wildcard };
 }
 
 /** 首位とのゲーム差 */
