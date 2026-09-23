@@ -139,6 +139,22 @@ export async function getTeamScheduleByJstMonth(teamId, year, month) {
   return { byDate, fromCache, offline };
 }
 
+// チームのレギュラーシーズン全日程（順位シミュレーション用）。
+// 消化済みの試合から直接対決成績を、未消化の試合から「残り試合」を取り出す。
+// チーム名は teams.js から引けるので hydrate は付けず、レスポンスを軽くしている。
+export async function getTeamRegularSeasonSchedule(teamId, season) {
+  const url = `${BASE}/schedule?sportId=1&teamId=${teamId}&season=${season}&gameType=R`;
+  const cacheKey = `team-season-schedule:${teamId}:${season}`;
+  const { data, fromCache, offline } = await cachedFetch(cacheKey, url);
+  const games = [];
+  for (const dateBlock of data.dates || []) {
+    for (const game of dateBlock.games || []) {
+      games.push(game);
+    }
+  }
+  return { games, fromCache, offline };
+}
+
 // --- ポストシーズン日程 ---
 
 // ポストシーズン（ワイルドカード〜ワールドシリーズ）の全日程を1リクエストで取得する。
