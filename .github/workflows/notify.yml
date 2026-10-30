@@ -19,6 +19,9 @@ on:
     #
     # 06:05〜14:35 UTC の毎時5分・35分 = 15:05〜23:35 JST
     - cron: '5,35 6-14 * * *'
+    # 定期実行の自動停止を防ぐ回（毎月1日・15日 12:17 JST）。下の keepalive ステップの説明を参照。
+    # 送信ウィンドウ外なので通知は送らず、Supabaseへの疎通確認（pingSupabase）だけが走る。
+    - cron: '17 3 1,15 * *'
   workflow_dispatch:
     inputs:
       force:
@@ -34,7 +37,20 @@ concurrency:
 jobs:
   notify:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write # keepalive でこのワークフローを有効化し直すため
     steps:
+      # GitHubは、リポジトリに60日間更新（コミット等）が無いと定期実行を自動で無効にする。
+      # オフシーズンはコミットが途絶えやすく、止まると pingSupabase も走らなくなって
+      # Supabase無料枠も7日後に一時停止する（2026-09に通知が途絶えたのと同じ状態になる）。
+      # 月2回、APIでこのワークフローを有効化し直して、無効化までの期間をリセットする。
+      # 後続のステップが失敗しても実行されるよう先頭に置く。
+      - name: keepalive（定期実行の自動停止を防ぐ）
+        if: github.event.schedule == '17 3 1,15 * *'
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/notify.yml/enable"
+        env:
+          GH_TOKEN: ${{ github.token }}
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:

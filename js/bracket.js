@@ -9,7 +9,7 @@
 //   各試合の結果（isWinner / スコア）から数える。日程が未確定の枠も表示できるようにする。
 import { LEAGUES, TEAMS, teamName, teamShort, teamColor } from './teams.js';
 import { getPostseasonSchedule, currentSeasonYear, formatJstTime, formatJstDateLabel } from './api.js';
-import { isPostseasonWindow } from './season.js';
+import { isPostseasonWindow, isOffseason } from './season.js';
 
 // gameType は F=ワイルドカード, D=ディビジョン, L=リーグ優勝決定, W=ワールドシリーズ。
 // winsNeeded は勝ち上がりに必要な勝ち数、defaultGames は最大試合数（日程が未確定のときの既定値）。
@@ -338,6 +338,23 @@ export async function loadBracket(season = currentSeasonYear(), options = {}) {
   } catch (e) {
     return null; // ポストシーズン情報が取れなくても、呼び出し元の本来の表示は続けられるようにする
   }
+}
+
+// ワールドシリーズの勝者が決まっているか（＝そのシーズンの全日程が終わったか）
+export function isPostseasonComplete(bracket) {
+  if (!bracket) return false;
+  const ws = bracket.rounds.find(({ round }) => round.gameType === 'W');
+  return Boolean(ws && ws.series.some((s) => s.winnerId));
+}
+
+// オフシーズンか。season.js の isOffseason は日付だけの目安（11/21〜）なので、
+// ポストシーズンの取得窓の中でもワールドシリーズが決着していればオフシーズンとして扱う。
+// これでワールドシリーズの終わる日が年によってずれても、終わった翌日からオフシーズンの表示になる。
+// 日程は loadBracket と同じキャッシュを使うため、ホームなどで取得済みなら通信は増えない。
+export async function isOffseasonNow() {
+  if (isOffseason()) return true;
+  if (!isPostseasonWindow()) return false;
+  return isPostseasonComplete(await loadBracket());
 }
 
 export function findSeriesForGame(bracket, gamePk) {

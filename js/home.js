@@ -4,7 +4,7 @@ import { getFavorites } from './db.js';
 import { openGameSheet } from './game-sheet.js';
 import { pickTrivia } from './trivia.js';
 import { renderTodayStats } from './today-stats.js';
-import { loadBracket, findSeriesForGame, nextPostseasonGame, seriesShortLineJa } from './bracket.js';
+import { loadBracket, findSeriesForGame, nextPostseasonGame, seriesShortLineJa, isPostseasonComplete } from './bracket.js';
 import { isPostseasonWindow, isOffseason, offseasonMessageJa } from './season.js';
 import { requestStandingsTab } from './standings.js';
 
@@ -92,6 +92,16 @@ function sortGamesByFavorite(games) {
 //   それ以外         … 従来どおり
 // isToday が false（前日の結果）のときは、シーズン終了の案内は出さない。
 function renderNoGamesState(isToday) {
+  // ワールドシリーズが決着していれば、日付の目安（11/21〜）を待たずにオフシーズンの案内を出す
+  const offseason = isOffseason() || isPostseasonComplete(bracket);
+  if (isToday && offseason) {
+    return `
+      <div class="travel-day-card">
+        <div class="travel-day-title">オフシーズン</div>
+        <div class="travel-day-next">${offseasonMessageJa()}</div>
+      </div>
+    `;
+  }
   if (bracket) {
     const next = nextPostseasonGame(bracket);
     if (!next) return `<div class="empty-state">ポストシーズンの全日程が終了しました。</div>`;
@@ -99,14 +109,6 @@ function renderNoGamesState(isToday) {
       <div class="travel-day-card">
         <div class="travel-day-title">今日は移動日です</div>
         <div class="travel-day-next">次の試合は ${formatJstDateLabel(next.gameDate)} ${next.status && next.status.startTimeTBD ? '時間未定' : formatJstTime(next.gameDate)}</div>
-      </div>
-    `;
-  }
-  if (isToday && isOffseason()) {
-    return `
-      <div class="travel-day-card">
-        <div class="travel-day-title">オフシーズン</div>
-        <div class="travel-day-next">${offseasonMessageJa()}</div>
       </div>
     `;
   }

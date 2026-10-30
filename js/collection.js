@@ -5,7 +5,8 @@ import { getFavorites, toggleFavorite } from './db.js';
 import { TEAMS, teamName, teamColor, teamShort } from './teams.js';
 import { openTeamSheet } from './team-sheet.js';
 import { openPlayerSheet } from './player-sheet.js';
-import { isOffseason, summarySeasonYear } from './season.js';
+import { summarySeasonYear } from './season.js';
+import { isOffseasonNow } from './bracket.js';
 import { renderSeasonSummary } from './season-summary.js';
 
 function myTeamCard(fav) {
@@ -81,7 +82,7 @@ export async function renderCollection(container) {
     render(container, favorites);
     // オフシーズンだけ、画面の先頭にシーズンまとめを差し込む
     // （取得に失敗しても推しチーム・推し選手の一覧は表示済み）
-    if (isOffseason()) {
+    if (await isOffseasonNow()) {
       renderSeasonSummary(container, favorites, summarySeasonYear())
         .then(() => wireCardTaps(container))
         .catch(() => {});
