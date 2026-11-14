@@ -8,8 +8,8 @@ import { loadBracket, findSeriesForTeam, seriesTeamStatus } from './bracket.js';
 import { findSeasonStat, hittingStatGrid, pitchingStatGrid } from './player-sheet.js';
 import { JP_NAME_ALIASES } from './player-names.js';
 
-// 主要タイトル。/api/v1/awards の賞IDは実レスポンスで確認できていないため、
-// 取れなかった賞は黙って表示しない方針（賞IDが判明したらここを直すだけで済むようにしてある）。
+// 主要タイトル。賞IDは2026年の発表後に実レスポンスで確認済み（2026-11-14、6賞とも取得できた）。
+// 発表前の賞や通信失敗に備え、取れなかった賞は黙って表示しない方針はそのまま残している。
 const MAIN_AWARDS = [
   { id: 'ALMVP', ja: 'ア・リーグ MVP' },
   { id: 'NLMVP', ja: 'ナ・リーグ MVP' },

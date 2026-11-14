@@ -5,8 +5,8 @@
 //
 // データは api.js の getStatLeaders（/stats/leaders）。打撃・投手 × リーグの組み合わせごとに
 // 1リクエストで全部門をまとめて取り、部門の切り替えでは通信しない。
-// **実レスポンスを確認できていない**エンドポイントのため、取れた部門だけを出し、
-// 1つも取れなければ案内文を出す（画面全体は壊さない）。
+// レスポンスの形は2026-11-14に実データで確認済み。シーズン開幕直後など部門が欠ける場合に備え、
+// 取れた部門だけを出し、1つも取れなければ案内文を出す（画面全体は壊さない）。
 import { getStatLeaders } from './api.js';
 import { teamShort, teamColor } from './teams.js';
 import { japaneseName, JP_NAME_ALIASES } from './player-names.js';
