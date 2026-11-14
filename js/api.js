@@ -257,6 +257,33 @@ export async function getPlayerPostseasonStats(personId, season) {
   return { stats: data.stats || [], fromCache, offline };
 }
 
+// 選手の年度別成績（選手カードの「年度別成績」表用）。
+// プロフィール本体（getPlayerDetail）とは別リクエストにして、取得に失敗してもカード本体は
+// 表示できるようにする（getPlayerSplits と同じ方針）。シーズンをまたいだ一覧なのでキーに年は含めない。
+// 途中移籍した年は球団ごとの行と合計の行が返ってくる想定だが、実レスポンスを確認できていないため、
+// 行の解釈（どれを合計とみなすか）は呼び出し側（player-sheet.js）で欠けていても落ちないようにしている。
+export async function getPlayerYearByYear(personId) {
+  const url = `${BASE}/people/${personId}/stats?stats=yearByYear&group=hitting,pitching&sportId=1`;
+  const cacheKey = `player-yby:${personId}`;
+  const { data, fromCache, offline } = await cachedFetch(cacheKey, url);
+  return { stats: data.stats || [], fromCache, offline };
+}
+
+// --- 個人成績ランキング ---
+
+// 部門別の上位選手（/stats/leaders）。打撃・投手それぞれ1リクエストで複数部門をまとめて取る。
+// 「奪三振」のように打撃・投手の両方にある部門があるため、statGroup で必ずどちらかに絞る。
+// **実レスポンスを確認できていない**エンドポイントなので、呼び出し側（leaders.js）は
+// leagueLeaders が無い・部門が欠けている場合も「取れた部門だけ表示する」前提で使うこと。
+// leagueId を省くとMLB全体、103/104 でア・ナ各リーグのランキングになる。
+export async function getStatLeaders(season, group, categories, leagueId = null, limit = 20) {
+  const league = leagueId ? `&leagueId=${leagueId}` : '';
+  const url = `${BASE}/stats/leaders?leaderCategories=${categories.join(',')}&season=${season}&sportId=1&statGroup=${group}&gameType=R&limit=${limit}${league}`;
+  const cacheKey = `stat-leaders:${season}:${group}:${leagueId || 'all'}`;
+  const { data, fromCache, offline } = await cachedFetch(cacheKey, url);
+  return { leaders: data.leagueLeaders || [], fromCache, offline };
+}
+
 // --- 主要タイトルの受賞者（オフシーズンのシーズンまとめ用） ---
 
 // 賞ごとの受賞者。/api/v1/awards/{awardId}/recipients に賞IDを1つずつ渡す形でしか

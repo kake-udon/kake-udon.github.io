@@ -1,7 +1,8 @@
 // 選手詳細シート：ベースボールカード風の全画面表示。
 // カードをタップすると裏返り、表＝プロフィール／裏＝通算成績が入れ替わる。
 // カードの下に当該シーズンの主要成績・月別成績・直近5試合を並べる。
-import { getPlayerDetail, getPlayerSplits, getPlayerPostseasonStats, currentSeasonYear } from './api.js';
+import { getPlayerDetail, getPlayerSplits, getPlayerPostseasonStats, getPlayerYearByYear } from './api.js';
+import { displaySeasonYear } from './season.js';
 import { TEAMS, teamShort } from './teams.js';
 import { japaneseName } from './player-names.js';
 import { getFavorites, toggleFavorite } from './db.js';
@@ -397,6 +398,127 @@ async function loadPostseasonStats(personId, seasonYear, pitcherFirst) {
   }
 }
 
+// --- 年度別成績（別リクエストで後追い取得する補助情報） ---
+// 横に長い表になるので、表の部分だけ横スクロールさせる（画面全体は横にはみ出させない）。
+// 途中移籍した年は球団ごとの行と「計」の行を並べる。合計行がAPIから返ってこない場合も、
+// 率の再計算のような自前の合算はせず、返ってきた行をそのまま並べる。
+const YBY_COLUMNS = {
+  hitting: [
+    ['試合', (s) => s.gamesPlayed],
+    ['打率', (s) => s.avg],
+    ['本', (s) => s.homeRuns],
+    ['点', (s) => s.rbi],
+    ['安', (s) => s.hits],
+    ['盗', (s) => s.stolenBases],
+    ['OPS', (s) => s.ops],
+  ],
+  pitching: [
+    ['登板', (s) => s.gamesPitched ?? s.gamesPlayed],
+    ['勝', (s) => s.wins],
+    ['敗', (s) => s.losses],
+    ['S', (s) => s.saves],
+    ['回', (s) => s.inningsPitched],
+    ['防御率', (s) => s.era],
+    ['奪三振', (s) => s.strikeOuts],
+    ['WHIP', (s) => s.whip],
+  ],
+};
+
+function ybyTeamLabel(team) {
+  if (!team) return '';
+  if (TEAMS[team.id]) return teamShort(team.id);
+  return team.abbreviation || team.teamName || team.name || '';
+}
+
+// stats（getPlayerYearByYear のレスポンス）から、指定グループのMLBレギュラーシーズンの行を年ごとに並べる
+function collectYearByYearRows(stats, groupName) {
+  const bySeason = new Map();
+  for (const entry of stats || []) {
+    if (!entry.group || entry.group.displayName !== groupName) continue;
+    if (entry.type && entry.type.displayName && entry.type.displayName !== 'yearByYear') continue;
+    for (const split of entry.splits || []) {
+      if (!split.stat || !split.season) continue;
+      if (split.sport && split.sport.id && split.sport.id !== 1) continue; // マイナー・他リーグの行は除く
+      if (split.gameType && split.gameType !== 'R') continue;
+      if (!bySeason.has(split.season)) bySeason.set(split.season, []);
+      bySeason.get(split.season).push(split);
+    }
+  }
+  const rows = [];
+  [...bySeason.keys()].sort().forEach((season) => {
+    const splits = bySeason.get(season);
+    const teamRows = splits.filter((sp) => sp.team);
+    const totalRows = splits.filter((sp) => !sp.team);
+    if (teamRows.length >= 2) {
+      teamRows.forEach((sp) => rows.push({ season, label: ybyTeamLabel(sp.team), stat: sp.stat, sub: true }));
+      if (totalRows.length) rows.push({ season, label: '計', stat: totalRows[0].stat, total: true });
+    } else if (teamRows.length === 1) {
+      rows.push({ season, label: ybyTeamLabel(teamRows[0].team), stat: teamRows[0].stat });
+    } else if (totalRows.length) {
+      rows.push({ season, label: '', stat: totalRows[0].stat });
+    }
+  });
+  return rows;
+}
+
+function renderYearByYearTable(rows, careerStat, groupName) {
+  if (!rows.length) return '';
+  const cols = YBY_COLUMNS[groupName];
+  const cell = (v) => `<td>${v ?? '-'}</td>`;
+  const body = rows.map((r, i) => {
+    // 同じ年が続く行（途中移籍の2行目以降）は年を繰り返さない
+    const showYear = i === 0 || rows[i - 1].season !== r.season;
+    return `
+      <tr class="${r.total ? 'yby-total' : ''}">
+        <th scope="row">${showYear ? r.season : ''}</th>
+        <td class="yby-team">${r.label}</td>
+        ${cols.map(([, get]) => cell(get(r.stat))).join('')}
+      </tr>
+    `;
+  }).join('');
+  const career = careerStat
+    ? `<tr class="yby-career"><th scope="row">通算</th><td class="yby-team"></td>${cols.map(([, get]) => cell(get(careerStat))).join('')}</tr>`
+    : '';
+  const title = groupName === 'pitching' ? '年度別 投手成績' : '年度別 打撃成績';
+  return `
+    <div class="card-panel">
+      <div class="card-panel-title">${title}<span class="card-panel-note">MLB・レギュラーシーズン</span></div>
+      <div class="yby-scroll">
+        <table class="yby-table">
+          <thead><tr><th>年</th><th>球団</th>${cols.map(([label]) => `<th>${label}</th>`).join('')}</tr></thead>
+          <tbody>${body}${career}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+// 二刀流の選手は打撃・投手の両方を出す。それ以外は主戦場の側だけ
+// （投手の打撃成績や野手の登板記録は、数が少なく表が読みにくくなるだけなので出さない）。
+function isTwoWay(person) {
+  const pos = person.primaryPosition || {};
+  return pos.abbreviation === 'TWP' || pos.name === 'Two-Way Player';
+}
+
+async function loadYearByYear(person, pitcherFirst, careerHitting, careerPitching) {
+  try {
+    const { stats } = await getPlayerYearByYear(person.id);
+    const groups = isTwoWay(person)
+      ? (pitcherFirst ? ['pitching', 'hitting'] : ['hitting', 'pitching'])
+      : [pitcherFirst ? 'pitching' : 'hitting'];
+    const html = groups.map((g) => renderYearByYearTable(
+      collectYearByYearRows(stats, g),
+      g === 'pitching' ? careerPitching : careerHitting,
+      g,
+    )).join('');
+    const target = document.getElementById('player-yby');
+    if (!target) return; // シートが既に閉じられている場合
+    target.innerHTML = html;
+  } catch (e) {
+    // 年度別成績は補助情報のため、取得できなくても何も表示しない
+  }
+}
+
 function wireCardFlip() {
   const card = document.getElementById('player-card');
   if (!card) return;
@@ -438,7 +560,8 @@ export async function openPlayerSheet(personId) {
   };
 
   try {
-    const seasonYear = currentSeasonYear();
+    // オフシーズン（年明け〜開幕前）も、まだ試合のない新シーズンではなく直近の完了シーズンの成績を出す
+    const seasonYear = displaySeasonYear();
     const { person } = await getPlayerDetail(personId, seasonYear);
     if (!person) throw new Error('選手情報が見つかりませんでした');
     playerName = person.fullName;
@@ -460,11 +583,13 @@ export async function openPlayerSheet(personId) {
       <div id="player-splits"></div>
       ${renderSeasonBlocks(hittingStat, pitchingStat, seasonYear)}
       <div id="player-postseason"></div>
+      <div id="player-yby"></div>
       ${renderProfilePanel(person)}
     `;
     wireCardFlip();
     loadSplits(personId, seasonYear, pitcherFirst);
     loadPostseasonStats(personId, seasonYear, pitcherFirst);
+    loadYearByYear(person, pitcherFirst, careerHitting, careerPitching);
   } catch (e) {
     const body = document.getElementById('player-sheet-body');
     if (body) body.innerHTML = `<div class="empty-state">選手情報を取得できませんでした。</div>`;

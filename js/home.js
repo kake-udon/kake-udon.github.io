@@ -5,7 +5,7 @@ import { openGameSheet } from './game-sheet.js';
 import { pickTrivia } from './trivia.js';
 import { renderTodayStats } from './today-stats.js';
 import { loadBracket, findSeriesForGame, nextPostseasonGame, seriesShortLineJa } from './bracket.js';
-import { isPostseasonWindow, isOffseason, offseasonMessageJa } from './season.js';
+import { isPostseasonWindow, isOffseason, offseasonMessageJa, displaySeasonYear } from './season.js';
 import { requestStandingsTab } from './standings.js';
 
 let favoriteTeamIds = new Set();
@@ -128,25 +128,8 @@ async function loadFavorites() {
 export async function renderHome(container) {
   await loadFavorites();
 
-  // ポストシーズンの時期は、トーナメント表へ1タップで行けるボタンを最上部に並べる
-  const bracketLink = isPostseasonWindow()
-    ? `
-    <button class="race-link-bar bracket-link-bar" id="go-bracket">
-      <span class="race-link-text">ポストシーズン トーナメント表</span>
-      <span class="race-link-cta">勝ち上がりを見る
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m10 6 6 6-6 6"/></svg>
-      </span>
-    </button>`
-    : '';
-
   container.innerHTML = `
-    ${bracketLink}
-    <button class="race-link-bar" id="go-standings">
-      <span class="race-link-text">優勝争い・ポストシーズン</span>
-      <span class="race-link-cta">順位表を見る
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m10 6 6 6-6 6"/></svg>
-      </span>
-    </button>
+    ${renderTopLinks()}
     <div class="section-title">豆知識
       <button id="trivia-refresh" class="trivia-refresh-btn" aria-label="別の豆知識を見る">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.6-6.36"/><path d="M21 4v5h-5"/></svg>
@@ -221,6 +204,33 @@ function renderTriviaCard() {
   `;
 }
 
+function linkBar(id, text, cta, extraClass = '') {
+  return `
+    <button class="race-link-bar ${extraClass}" id="${id}">
+      <span class="race-link-text">${text}</span>
+      <span class="race-link-cta">${cta}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m10 6 6 6-6 6"/></svg>
+      </span>
+    </button>`;
+}
+
+// ホーム最上部の導線。時期によって出し分ける。
+// - ポストシーズンの時期：トーナメント表＋順位表
+// - オフシーズン：終わったシーズンの振り返り（ポストシーズンの結果・個人成績・最終順位）
+// - それ以外：順位表
+function renderTopLinks() {
+  if (isOffseason()) {
+    const y = displaySeasonYear();
+    return linkBar('go-bracket', `${y}年 ポストシーズンの結果`, '勝ち上がりを見る', 'bracket-link-bar')
+      + linkBar('go-leaders', `${y}年 個人成績ランキング`, 'タイトル争いを見る')
+      + linkBar('go-standings', `${y}年 最終順位`, '順位表を見る');
+  }
+  const bracketLink = isPostseasonWindow()
+    ? linkBar('go-bracket', 'ポストシーズン トーナメント表', '勝ち上がりを見る', 'bracket-link-bar')
+    : '';
+  return bracketLink + linkBar('go-standings', '優勝争い・ポストシーズン', '順位表を見る');
+}
+
 // ホームから順位表へ移る導線。app.js の navigate を直接呼ぶと循環インポートになるため、
 // ボトムナビの該当ボタンを押したことにして画面遷移させる。
 // トーナメント表へは、順位表画面に「最初はトーナメントのタブ」と伝えてから同じ方法で移る。
@@ -231,13 +241,14 @@ function wireStandingsLink(container) {
   };
   const btn = container.querySelector('#go-standings');
   if (btn) btn.onclick = goStandings;
-  const bracketBtn = container.querySelector('#go-bracket');
-  if (bracketBtn) {
-    bracketBtn.onclick = () => {
-      requestStandingsTab('bracket');
+  [['#go-bracket', 'bracket'], ['#go-leaders', 'leaders']].forEach(([sel, tab]) => {
+    const tabBtn = container.querySelector(sel);
+    if (!tabBtn) return;
+    tabBtn.onclick = () => {
+      requestStandingsTab(tab);
       goStandings();
     };
-  }
+  });
 }
 
 function wireTriviaRefresh(container) {

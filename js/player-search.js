@@ -1,6 +1,7 @@
 // 選手検索画面：名前検索（英語表記・日本人選手は日本語表記・その他の選手もカタカナ近似で検索可能）と、
 // 「日本人選手」クイックフィルター（探さなくても一覧で見られる導線）
-import { getAllPlayers, currentSeasonYear } from './api.js';
+import { getAllPlayers } from './api.js';
+import { displaySeasonYear } from './season.js';
 import { TEAMS } from './teams.js';
 import { getFavorites } from './db.js';
 import { openPlayerSheet } from './player-sheet.js';
@@ -17,7 +18,7 @@ let jpOnly = false; // 「日本人選手」フィルターの状態
 
 async function ensurePlayersLoaded() {
   if (loaded) return;
-  const { players } = await getAllPlayers(currentSeasonYear());
+  const { players } = await getAllPlayers(displaySeasonYear());
   allPlayers = players;
   loaded = true;
 }

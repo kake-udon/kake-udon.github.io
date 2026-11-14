@@ -1,4 +1,4 @@
-import { getStandings, currentSeasonYear } from './api.js';
+import { getStandings } from './api.js';
 import { TEAMS, DIVISIONS, teamColor, teamName } from './teams.js';
 import { openTeamSheet } from './team-sheet.js';
 import { openGameSheet } from './game-sheet.js';
@@ -7,14 +7,16 @@ import { psClass, renderWildcardCard, buildRaceContext, raceInfo } from './posts
 import { renderGbRuler } from './gb-ruler.js';
 import { loadBracket, renderBracket, wireBracket } from './bracket.js';
 import { computeSeeds, buildTree, renderTree, wireTree } from './bracket-tree.js';
-import { isOffseason, offseasonMessageJa, isPostseasonWindow } from './season.js';
+import { isOffseason, offseasonMessageJa, isPostseasonWindow, displaySeasonYear, nextSeasonOpening } from './season.js';
+import { renderLeadersPane } from './leaders.js';
 import { openSimSheet } from './sim-sheet.js';
 
 let cachedRecords = null;
 let teamRecordById = new Map(); // teamId -> teamRecord（絞り込みの判定に使用）
 let favoriteTeamIds = new Set();
 
-// ポストシーズン用タブ（'standings' | 'bracket'）。ポストシーズンの時期（または日程がある間）だけタブ自体を出す。
+// 画面上部のタブ（'standings' | 'bracket' | 'leaders'）。トーナメントはポストシーズンの時期
+// （または日程が取れた間）だけ出し、個人成績は通年で出す。
 let activeTab = 'standings';
 let bracketData = null;
 let bracketSeason = null;
@@ -270,6 +272,7 @@ function renderBody(container) {
     body.innerHTML = `<div class="spinner"></div>`;
     return;
   }
+  body.classList.toggle('is-final', isOffseason());
   if (!cachedRecords.length) {
     body.innerHTML = isOffseason()
       ? `<div class="empty-state">${offseasonMessageJa()}<br>順位表は開幕後に表示されます。</div>`
@@ -301,6 +304,11 @@ function renderBody(container) {
     `;
   }).join('');
 
+  // オフシーズンは「今の順位」ではなく直近の完了シーズンの最終順位になるので、その旨を先頭に出す。
+  // 残り試合が無くシミュレーションの意味がないため、「もしも順位」ボタンはCSS（.is-final）で隠す。
+  const finalNote = isOffseason()
+    ? `<div class="final-standings-note">${displaySeasonYear()}年シーズンの最終順位です。${nextSeasonOpening().year}年シーズンは${nextSeasonOpening().month}月開幕予定です。</div>`
+    : '';
   const legend = `
     <div class="race-legend">
       <span><b>M</b>＝マジックナンバー（地区優勝・WC確保まで）</span>
@@ -311,7 +319,7 @@ function renderBody(container) {
   `;
 
   body.innerHTML = blocks
-    ? legend + blocks
+    ? finalNote + legend + blocks
       // 地区ブロック（ア東→…→ナ西）と同じく、ア・リーグ → ナ・リーグの順に並べる
       + renderWildcardCard(cachedRecords, 103, 'ア・リーグ', raceCtx)
       + renderWildcardCard(cachedRecords, 104, 'ナ・リーグ', raceCtx)
@@ -335,9 +343,9 @@ function renderBody(container) {
   });
 }
 
-// --- ポストシーズン（トーナメント表）タブ ---
-// ボトムナビは既に6つあり7つ目を足すと1つあたりが狭くなるため、順位表画面の上部にタブを置いて
-// 「順位表」と「トーナメント」を切り替える。ポストシーズンの日程が無い時期はタブ自体を出さない。
+// --- 画面上部のタブ（順位表／トーナメント／個人成績） ---
+// ボトムナビは既に6つあり7つ目を足すと1つあたりが狭くなるため、順位表画面の上部にタブを置いて切り替える。
+// トーナメントはポストシーズンの日程が無い時期はタブ自体を出さない。個人成績は通年で出す。
 
 // トーナメントのタブを出す時期か。順位表だけでも「現時点のシード」で樹形図を描けるので、
 // 日程が発表される前の9月（ポストシーズンの取得窓）から出す。
@@ -348,13 +356,10 @@ function hasBracketTab() {
 function renderTabBar(container) {
   const bar = container.querySelector('#ps-tab-bar');
   if (!bar) return;
-  if (!hasBracketTab()) {
-    bar.innerHTML = '';
-    return;
-  }
   const tabs = [
     { key: 'standings', label: '順位表' },
-    { key: 'bracket', label: 'トーナメント' },
+    ...(hasBracketTab() ? [{ key: 'bracket', label: 'トーナメント' }] : []),
+    { key: 'leaders', label: '個人成績' },
   ].map((t) => `<button class="ps-tab ${activeTab === t.key ? 'active' : ''}" data-tab="${t.key}" role="tab" aria-selected="${activeTab === t.key}">${t.label}</button>`).join('');
   bar.innerHTML = `<div class="ps-tabs" role="tablist">${tabs}</div>`;
   bar.querySelectorAll('.ps-tab').forEach((btn) => {
@@ -370,7 +375,7 @@ function renderTabBar(container) {
 function renderBracketPane(container) {
   const pane = container.querySelector('#bracket-pane');
   if (!pane || !hasBracketTab()) return;
-  const season = bracketSeason || currentSeasonYear();
+  const season = bracketSeason || displaySeasonYear();
   const tree = cachedRecords && cachedRecords.length
     ? buildTree(computeSeeds(cachedRecords), bracketData)
     : null;
@@ -395,23 +400,42 @@ function switchTab(container, tab) {
   activeTab = tab;
   const standingsPane = container.querySelector('#standings-pane');
   const bracketPane = container.querySelector('#bracket-pane');
+  const leadersPane = container.querySelector('#leaders-pane');
   if (standingsPane) standingsPane.classList.toggle('pane-hidden', tab !== 'standings');
   if (bracketPane) bracketPane.classList.toggle('pane-hidden', tab !== 'bracket');
+  if (leadersPane) leadersPane.classList.toggle('pane-hidden', tab !== 'leaders');
   if (tab === 'bracket') renderBracketPane(container);
+  if (tab === 'leaders') renderLeadersTab(container);
   renderTabBar(container);
+}
+
+// 個人成績のタブ。開いたときだけランキングを取得する（開かなければ通信しない）。
+// 一度描いたら、タブを行き来しても描き直さない（選んだ部門・スクロール位置を保つ）。
+function renderLeadersTab(container) {
+  const pane = container.querySelector('#leaders-pane');
+  if (!pane || pane.dataset.rendered) return;
+  pane.dataset.rendered = '1';
+  renderLeadersPane(pane, displaySeasonYear(), { isFinal: isOffseason() });
 }
 
 // ポストシーズンの日程を取得してタブを出す。日程が無い時期・取得できなかった場合は
 // loadBracket が null を返すので、タブが出ないだけで順位表の表示には影響しない。
+// オフシーズンは直近の完了シーズンの結果（優勝までの勝ち上がり）として、取得窓の外でも取りに行く。
 async function loadPostseasonTab(container) {
-  const season = currentSeasonYear();
-  const bracket = await loadBracket(season);
-  if (!bracket) return;
+  const season = displaySeasonYear();
+  const offseason = isOffseason();
+  const bracket = await loadBracket(season, { force: offseason });
+  if (!bracket) {
+    // ホームの「ポストシーズンの結果」から来たのに日程が取れなかった場合は、順位表のタブへ戻す
+    if (activeTab === 'bracket' && !hasBracketTab()) switchTab(container, 'standings');
+    return;
+  }
   bracketData = bracket;
   bracketSeason = season;
   // ポストシーズンが始まっていれば、利用者がまだタブを選んでいない限りトーナメントを先に見せる
+  // （オフシーズンは順位表・個人成績も「振り返り」なので、自動では切り替えない）
   const started = bracket.rounds.some(({ series }) => series.some((s) => s.status !== 'scheduled'));
-  if (started && !userChoseTab && activeTab !== 'bracket') {
+  if (!offseason && started && !userChoseTab && activeTab !== 'bracket') {
     switchTab(container, 'bracket');
     return;
   }
@@ -423,7 +447,7 @@ export async function renderStandings(container) {
   await loadFavorites();
   // 画面を開き直したときは順位表タブから始める（前回どのタブにいたかは持ち越さない）。
   // ホームの「トーナメント表」から来たときだけ、トーナメントのタブから始める。
-  activeTab = requestedTab === 'bracket' ? 'bracket' : 'standings';
+  activeTab = ['bracket', 'leaders'].includes(requestedTab) ? requestedTab : 'standings';
   userChoseTab = Boolean(requestedTab);
   requestedTab = null;
   bracketData = null;
@@ -437,7 +461,10 @@ export async function renderStandings(container) {
       <div id="standings-body"><div class="spinner"></div></div>
     </div>
     <div id="bracket-pane" class="${activeTab === 'bracket' ? '' : 'pane-hidden'}">${activeTab === 'bracket' ? '<div class="spinner"></div>' : ''}</div>
+    <div id="leaders-pane" class="${activeTab === 'leaders' ? '' : 'pane-hidden'}"></div>
   `;
+  renderTabBar(container);
+  if (activeTab === 'leaders') renderLeadersTab(container);
   wireInteractions(container);
   wireMapTapTargets(container);
   wireMapFilters(container);
@@ -445,7 +472,8 @@ export async function renderStandings(container) {
   loadPostseasonTab(container);
 
   try {
-    const { data, offline } = await getStandings(currentSeasonYear());
+    // オフシーズン（特に年明け〜開幕前）は、まだ試合のない新シーズンではなく直近の完了シーズンを出す
+    const { data, offline } = await getStandings(displaySeasonYear());
     cachedRecords = data.records || [];
     teamRecordById = new Map();
     cachedRecords.forEach((rec) => {

@@ -35,6 +35,14 @@ export function summarySeasonYear(jstDateStr = toJstDateString()) {
   return jstDateStr.slice(5) <= OFFSEASON_END_MMDD ? year - 1 : year;
 }
 
+// 画面に出す成績・順位表の対象シーズン。シーズン中は当年、年明け〜開幕前は前年（直近の完了シーズン）。
+// currentSeasonYear() をそのまま使うと、1月になった時点で「まだ1試合もない新シーズン」を
+// 取りに行ってしまい、順位表や選手の成績がオフシーズンの間ずっと空になるため、
+// 「見せたいデータの年」はこちらで決める（今日・明日の試合を探す処理は従来どおり当年でよい）。
+export function displaySeasonYear(jstDateStr = toJstDateString()) {
+  return summarySeasonYear(jstDateStr);
+}
+
 // 次のシーズンの開幕（年・月）。正確な開幕日はAPIから取れないため月までの目安を返す。
 export function nextSeasonOpening(jstDateStr = toJstDateString()) {
   const year = Number(jstDateStr.slice(0, 4));

@@ -1,4 +1,5 @@
-import { getTeamScheduleByJstMonth, getStandings, getTeamRoster, toJstDateString, formatJstTime, currentSeasonYear } from './api.js';
+import { getTeamScheduleByJstMonth, getStandings, getTeamRoster, toJstDateString, formatJstTime } from './api.js';
+import { displaySeasonYear } from './season.js';
 import { teamName, teamShort, teamColor, teamEnNick, teamEnEyebrow, TEAMS, DIVISIONS } from './teams.js';
 import { getFavorites, toggleFavorite } from './db.js';
 import { openGameSheet } from './game-sheet.js';
@@ -162,7 +163,7 @@ function wireRosterTaps(container, teamId) {
 
 async function loadStandingSummary(teamId) {
   try {
-    const { data } = await getStandings(currentSeasonYear());
+    const { data } = await getStandings(displaySeasonYear());
     let found = null;
     for (const rec of data.records || []) {
       const tr = (rec.teamRecords || []).find((t) => t.team.id === teamId);
