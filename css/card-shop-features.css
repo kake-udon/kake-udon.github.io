@@ -1670,3 +1670,159 @@ table.standings-table tbody tr.sim-cutline td { border-bottom: 2px dashed var(--
 .sim-table td:first-child { width: 100%; max-width: 0; }
 .sim-table .team-cell { min-width: 0; }
 .sim-table .sim-team-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* =========================================================
+   ⑫ オフシーズンの振り返り（最終順位の注記・個人成績ランキング・年度別成績）
+   ========================================================= */
+
+/* ホーム最上部の導線が3本並ぶ時期（オフシーズン）に、間隔をそろえる */
+.race-link-bar + .race-link-bar { margin-top: 8px; }
+
+/* 順位表：オフシーズンは最終順位なので、シミュレーションのボタンを隠す（残り試合が無いため） */
+#standings-body.is-final .sim-open-btn { display: none; }
+.final-standings-note {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--amber);
+  background: #fff8e8;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ink-brown);
+}
+
+/* 個人成績ランキング（js/leaders.js） */
+.leaders-filter { margin-bottom: 10px; }
+.leaders-cats {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 2px 0 10px;
+  margin-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.leaders-cats::-webkit-scrollbar { display: none; }
+.leaders-cat {
+  flex-shrink: 0;
+  min-height: 36px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--chalk-dim);
+  cursor: pointer;
+}
+.leaders-cat.active { background: var(--amber); border-color: var(--amber); color: var(--ink-brown); }
+.leaders-cat:disabled { opacity: 0.4; cursor: default; }
+
+.leaders-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  box-shadow: 0 3px 0 var(--line);
+}
+.leader-row {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto 56px;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 6px 0;
+  border-bottom: 1px dashed #e2d3b6;
+  cursor: pointer;
+}
+.leader-row:last-child { border-bottom: none; }
+.leader-row:active { background: var(--press); }
+.leader-rank {
+  font-family: 'Alfa Slab One', serif;
+  font-size: 14px;
+  color: var(--chalk-dim);
+  text-align: center;
+}
+.leader-row.is-top .leader-rank {
+  color: var(--ink-brown);
+  background: var(--foil, var(--amber));
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  line-height: 26px;
+}
+.leader-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--chalk);
+}
+.leader-jp, .leader-fav {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 10px;
+  vertical-align: 2px;
+}
+.leader-jp {
+  padding: 0 5px;
+  border-radius: 3px;
+  border: 1px solid var(--loss);
+  color: var(--loss);
+  font-weight: 600;
+}
+.leader-fav { color: var(--amber); font-size: 12px; }
+.leader-row.is-favorite { background: rgba(217, 164, 65, 0.12); }
+.leader-team {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: 'Alfa Slab One', serif;
+  font-size: 11px;
+  color: var(--chalk-dim);
+}
+.leader-team .team-dot { width: 8px; height: 8px; }
+.leader-value {
+  font-family: 'Roboto Mono', monospace;
+  font-weight: 700;
+  font-size: 15px;
+  text-align: right;
+  color: var(--ink-brown);
+}
+.leaders-note { margin: 10px 2px 0; font-size: 11px; line-height: 1.6; color: var(--chalk-dim); }
+
+/* 選手カードの年度別成績（表だけ横スクロール） */
+.yby-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -4px; }
+.yby-table {
+  border-collapse: collapse;
+  min-width: 100%;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.yby-table th, .yby-table td {
+  padding: 6px 6px;
+  text-align: right;
+  border-bottom: 1px dashed #e2d3b6;
+}
+.yby-table thead th {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--chalk-dim);
+}
+.yby-table th:first-child, .yby-table td.yby-team { text-align: left; }
+.yby-table tbody th { font-weight: 600; color: var(--chalk); }
+.yby-table td.yby-team { font-family: 'Alfa Slab One', serif; font-size: 11px; color: var(--chalk-dim); }
+.yby-table tr.yby-total td { font-weight: 700; }
+.yby-table tr.yby-career th, .yby-table tr.yby-career td {
+  border-top: 2px solid var(--line);
+  border-bottom: none;
+  font-weight: 700;
+  color: var(--ink-brown);
+}

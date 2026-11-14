@@ -9,7 +9,8 @@
 //   直接対決成績・残り試合 … 地区5球団ぶんの getTeamRegularSeasonSchedule
 //     （ワイルドカードでは、まだ進出の目が残っているリーグの球団ぶん）
 // 選んだ勝敗はメモリ上にだけ持つ（アプリを開き直すと消える。実際の成績と混ざらないようにするため）。
-import { getStandings, getTeamRegularSeasonSchedule, currentSeasonYear, toJstDateString, formatJstTime, formatJstDateLabel } from './api.js';
+import { getStandings, getTeamRegularSeasonSchedule, toJstDateString, formatJstTime, formatJstDateLabel } from './api.js';
+import { displaySeasonYear } from './season.js';
 import { TEAMS, DIVISIONS, LEAGUES, teamName, teamShort, teamColor } from './teams.js';
 import { closeSheet, pushSheetBack } from './sheet-stack.js';
 import { openTeamSheet } from './team-sheet.js';
@@ -590,7 +591,7 @@ export async function openSimSheet(divisionId = 201) {
   `;
   document.getElementById('sheet-back').onclick = () => closeSheet(root);
   const body = document.getElementById('sim-body');
-  const season = currentSeasonYear();
+  const season = displaySeasonYear();
 
   // 地区を切り替えたときに日程を読み直せるよう、読み込みは地区単位で行う
   const load = async (scope) => {

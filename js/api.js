@@ -257,12 +257,40 @@ export async function getPlayerPostseasonStats(personId, season) {
   return { stats: data.stats || [], fromCache, offline };
 }
 
+// 選手の年度別成績（選手カードの「年度別成績」表用）。
+// プロフィール本体（getPlayerDetail）とは別リクエストにして、取得に失敗してもカード本体は
+// 表示できるようにする（getPlayerSplits と同じ方針）。シーズンをまたいだ一覧なのでキーに年は含めない。
+// 2026-11-14に実レスポンスを確認済み：途中移籍した年は球団ごとの行（team あり）と、
+// 合計の行（team なし・numTeams あり）が返る。各行に sport.id と gameType（R）が入る。
+export async function getPlayerYearByYear(personId) {
+  const url = `${BASE}/people/${personId}/stats?stats=yearByYear&group=hitting,pitching&sportId=1`;
+  const cacheKey = `player-yby:${personId}`;
+  const { data, fromCache, offline } = await cachedFetch(cacheKey, url);
+  return { stats: data.stats || [], fromCache, offline };
+}
+
+// --- 個人成績ランキング ---
+
+// 部門別の上位選手（/stats/leaders）。打撃・投手それぞれ1リクエストで複数部門をまとめて取る。
+// 「奪三振」のように打撃・投手の両方にある部門があるため、statGroup で必ずどちらかに絞る。
+// 2026-11-14に実レスポンスを確認済み：leagueLeaders[] に leaderCategory（要求したキーそのまま）・statGroup・
+// leaders[].{rank,value,person.{id,fullName},team.id} が入る。同率は同じ rank で返る。
+// 部門の並び順は要求順とは限らないので、呼び出し側（leaders.js）は leaderCategory で引くこと。
+// leagueId を省くとMLB全体、103/104 でア・ナ各リーグのランキングになる。
+export async function getStatLeaders(season, group, categories, leagueId = null, limit = 20) {
+  const league = leagueId ? `&leagueId=${leagueId}` : '';
+  const url = `${BASE}/stats/leaders?leaderCategories=${categories.join(',')}&season=${season}&sportId=1&statGroup=${group}&gameType=R&limit=${limit}${league}`;
+  const cacheKey = `stat-leaders:${season}:${group}:${leagueId || 'all'}`;
+  const { data, fromCache, offline } = await cachedFetch(cacheKey, url);
+  return { leaders: data.leagueLeaders || [], fromCache, offline };
+}
+
 // --- 主要タイトルの受賞者（オフシーズンのシーズンまとめ用） ---
 
 // 賞ごとの受賞者。/api/v1/awards/{awardId}/recipients に賞IDを1つずつ渡す形でしか
 // 取得できないため、呼び出し側（season-summary.js）が必要な賞だけをまとめて要求する。
-// **実レスポンスを確認できていない**エンドポイントなので、賞IDが違う・形が違う場合に備えて
-// 呼び出し側は「取れた賞だけ表示する」前提で使うこと（取れなくても画面は壊れない）。
+// 2026-11-14に実レスポンスを確認済み：awards[0] に player.{id,nameFirstLast}・team.id・date が入る
+// （fullName は無い）。発表前の賞は awards が空になるので、呼び出し側は「取れた賞だけ表示する」。
 export async function getAwardRecipients(awardId, season) {
   const url = `${BASE}/awards/${awardId}/recipients?sportId=1&season=${season}`;
   const cacheKey = `award:${awardId}:${season}`;
